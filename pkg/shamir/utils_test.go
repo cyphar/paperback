@@ -19,6 +19,7 @@
 package shamir
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"math/rand"
@@ -86,23 +87,49 @@ var secretVectors = [][]byte{
 	mustRandomBytes(DefaultBlockSize*143 - 18),
 }
 
-// testSplitCombineHelper is a helper for testing shamir.Split+Combine setups.
-func testSplitCombineHelper(t *testing.T, fn func(t *testing.T, secret []byte, shares []Share)) {
-	// Test (k,n) for a bunch of different combinations.
-	const maxK = 8
-	for k := 2; k < maxK; k++ {
-		for n := k; n < 3*k; n++ {
-			tn := fmt.Sprintf("split_combine_k=%d_n=%d", k, n)
-			t.Run(tn, func(t *testing.T) {
-				for _, secret := range secretVectors {
-					shares, err := Split(uint(k), uint(n), secret)
-					if err != nil {
-						t.Errorf("failed to split secret(k=%d, n=%d): %v", k, n, err)
-					} else {
-						fn(t, secret, shares)
-					}
-				}
-			})
-		}
+// testSchemeHelper is a helper which just provides the ability to run test
+// functions on the set of secretVectors, and with multiple schemes.
+func testSchemeHelper(t *testing.T, fn func(t *testing.T, k, n uint, secret []byte)) {
+	// Test only a few (k,n) combinations.
+	schemes := []struct{ k, n uint }{
+		{2, 2},
+		{2, 3},
+		{2, 4},
+		{4, 4},
+		{4, 7},
+		{7, 7},
+		{7, 8},
+		{7, 12},
+		{8, 9},
+		{14, 19},
 	}
+	for _, scheme := range schemes {
+		k, n := scheme.k, scheme.n
+		tn := fmt.Sprintf("Scheme:k=%d,n=%d", k, n)
+		t.Run(tn, func(t *testing.T) {
+			for _, secret := range secretVectors {
+				fn(t, k, n, secret)
+			}
+		})
+	}
+}
+
+func copyShare(s Share) Share {
+	payload, err := json.Marshal(s)
+	if err != nil {
+		panic(err)
+	}
+	var newShare Share
+	if err := json.Unmarshal(payload, &newShare); err != nil {
+		panic(err)
+	}
+	return newShare
+}
+
+func copyShares(shares []Share) []Share {
+	var newShares []Share
+	for _, share := range shares {
+		newShares = append(newShares, copyShare(share))
+	}
+	return newShares
 }

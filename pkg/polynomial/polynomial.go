@@ -96,6 +96,16 @@ func (p Polynomial) SetConst(a0 *big.Int) {
 	p[0] = copyInt(a0)
 }
 
+// Const gets the constant term of hte polynomial. This is a convenience
+// function to make sure that users don't depend on our internal
+// representation.
+func (p Polynomial) Const() *big.Int {
+	if len(p) < 1 {
+		panic("tried to Const on empty Polynomial")
+	}
+	return p[0]
+}
+
 // Degree returns the "real" degree of the given polynomial p(x), which is the
 // highest power of x that has a non-zero coefficient.
 func (p Polynomial) Degree() uint {

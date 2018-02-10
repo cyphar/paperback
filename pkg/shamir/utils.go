@@ -21,6 +21,8 @@ package shamir
 import (
 	"encoding/base64"
 	"math/big"
+
+	"github.com/pkg/errors"
 )
 
 // paddedBigint returns the padded version of the given *big.Int's big-endian
@@ -46,7 +48,13 @@ func encodeBigInt(x *big.Int) string {
 func decodeBigInt(s string) (*big.Int, error) {
 	b, err := base64.StdEncoding.DecodeString(s)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "decode *big.Int")
 	}
 	return new(big.Int).SetBytes(b), nil
+}
+
+// copyBigInt make a copy of a given *big.Int.
+func copyBigInt(x *big.Int) *big.Int {
+	xCopy := new(big.Int)
+	return xCopy.Add(xCopy, x)
 }

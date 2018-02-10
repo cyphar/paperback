@@ -24,10 +24,14 @@ import (
 	"testing"
 )
 
-// TestMarshalUnmarshal makes sure that random shares can round-trip through
+// TestShareWireFormatting makes sure that random shares can round-trip through
 // JSON.
-func TestMarshalUnmarshal(t *testing.T) {
-	testSplitCombineHelper(t, func(t *testing.T, secret []byte, shares []Share) {
+func TestShareWireFormatting(t *testing.T) {
+	testSchemeHelper(t, func(t *testing.T, k, n uint, secret []byte) {
+		shares, err := Split(k, n, secret)
+		if err != nil {
+			t.Fatalf("cannot split secret into (k=%d,n=%d): %v", k, n, err)
+		}
 		var encodedShares [][]byte
 
 		// We marshal then unmarshal each share.
@@ -45,7 +49,6 @@ func TestMarshalUnmarshal(t *testing.T) {
 				t.Fatalf("failed to unmarshal encoded share %v: %v", encoded, err)
 			}
 		}
-
 		// Make sure each share is identical to the original.
 		if !reflect.DeepEqual(shares, newShares) {
 			t.Errorf("round-trip doesn't produce idential shares: expected %v got %v", shares, newShares)
