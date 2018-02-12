@@ -19,7 +19,7 @@ statements about the parties you've given pieces to:
    relationships can change over time, and your friend today may not be your
    friend tomorrow.
 
-2. At any time, no party will maliciously collude with more than `k-2` other
+2. At any time, no party will maliciously collude with more than `k-1` other
    parties in order to decrypt your backup information (however if you are
    incapacitated, you could organise with the parties to cooperate only in that
    instance).  Shamir called this having a group of "mutually suspicious
@@ -35,7 +35,7 @@ providing enough pieces of the key. No individual knows the key (not even you),
 and thus no party can be compelled to provide the key without the consent of
 `k-1` other parties.
 
-Each party will get a copy of their unique "shard key", and optionally a copy
+Each party will get a copy of their unique "key shard", and optionally a copy
 of the "master document" (though this is not necessary, and in some situations
 you might want to store it separately so that even if the parties collude they
 cannot use the "master key" as they do not have the "master document"). We
@@ -71,11 +71,11 @@ passphrase. Within `paperback` this document is called the "master document",
 and is provided in a PDF of its own.
 
 The randomly-generated passphrase above is called the "master key" and is not
-stored anywhere. Instead, it is broken into several "shard keys" (with `n`
-"shard keys" generated, and only `k` are required to reconstruct the "master
-key"). Each "shard key" is then encrypted with a randomly-generated passphrase
-made up of "shard keywords" which then can be stored separately from the "shard
-key" -- then the "shard key" (along with its "shard keyword") are stored in
+stored anywhere. Instead, it is broken into several "key shards" (with `n`
+"key shards" generated, and only `k` are required to reconstruct the "master
+key"). Each "key shard" is then encrypted with a randomly-generated passphrase
+made up of "shard codewords" which then can be stored separately from the "key
+shard" -- then the "key shard" (along with its "shard codeword") are stored in
 individual PDFs.
 
 **NB** these individual PDFs should be securely destroyed as soon as they are
@@ -84,17 +84,17 @@ extended periods of time. As discussed above, only `k` shards are required to
 reconstruct the master key -- so storing all of the shards in the same place is
 the same as storing your master key.
 
-> *NOTE*: This final layer of "shard keyword" encryption is **not** vital to
-> the security of your `paperback` backup. Each individual "shard key" provides
+> *NOTE*: This final layer of "shard codeword" encryption is **not** vital to
+> the security of your `paperback` backup. Each individual "key shard" provides
 > zero information to an attacker about the "master key". This final layer
 > serves to provide an optional additional layer of security, where a party
-> that is particularly security-conscious could store the "shard keyword"
-> separately from the "shard key" and thus if the "shard key" is stolen it is
-> rendered *even more* useless without the "shard keyword".
+> that is particularly security-conscious could store the "shard codeword"
+> separately from the "key shard" and thus if the "key shard" is stolen it is
+> rendered *even more* useless without the "shard codeword".
 
 > *NOTE*: In future I plan to add the ability to choose a secret "shard
->         keyword" for "shard keys", so that especially paranoid parties can be
->         even more assured of the security of the individual shards.
+>         codeword" for "key shards", so that especially paranoid parties can
+>         be even more assured of the security of the individual shards.
 
 `paperback` has to encode quite a few pieces of data into a format which will
 be stored in a PDF (and then hopefully printed out). Much of this data would be
@@ -112,6 +112,49 @@ reasonably technically-talented user can write a tool to reconstruct the data.
 
 [datamatrix]: https://en.wikipedia.org/wiki/Data_Matrix
 [iso16022:2006]: https://www.iso.org/standard/44230.html
+
+### Paper Choices and Storage ###
+
+One of the most important things when considering using `paperback` is to keep
+in mind that the integrity of the backup is only as good as the paper you print
+it on. Most "cheap" copy paper contains some levels of acid (either from
+processing or from the lignin in wood pulp), and thus after a few years will
+begin to yellow and become brittle. Archival paper is a grade of paper that is
+designed to last longer than ordinary copy paper, and has standardised
+requirements for acidity levels and so on. The [National Archives of
+Australia][naa-standard] have an even more stringent standard for Archival
+paper and will certify consumer-level archival paper if it meets their strict
+requirements. Though archival paper is quite a bit more expensive than copy
+paper, you can consider it a fairly minor cost (as most users won't need more
+than 50 sheets). If archival paper is too expensive, try to find alkaline or
+acid-free paper (you can ask your state or local library if they have any
+recommendations).
+
+In addition, while using **hot** lamination on a piece of paper may make the
+document more resistant to spills and everyday damage, [the lamination process
+can cause documents to deteriorate faster][anthropology-lamination] due to the
+material most lamination pouches are made from (not to mention that the process
+is fairly hard to reverse).  Encapsulation is a process similar to lamination,
+except that the laminate is usually made of more inert materials like BoPET
+(Mylar) and only the edges are sealed with tape or thread (allowing the
+document to be removed). Archival-grade polyester sleeves are more expensive
+than lamination pouches, though they are not generally prohibitively expensive
+(you can find ~AU$1 sleeves online).
+
+The required lifetime of a `paperback` backup is entire up to the user, and so
+making the right price-versus-longevity tradeoff is fairly personal. However,
+if you would like your backups to last indefinitely, I would recommend looking
+at the [National Archives of Australia's website][naa-preserving-paper] which
+documents in quite some detail what common mistakes are made when trying to
+preserve paper documents.
+
+It is recommended that you explain some of the best practices of storing
+backups to the people you've given shard backups to -- as they are the people
+who are in charge of keeping your backups safe and intact.
+
+[naa-standard]: http://www.naa.gov.au/information-management/managing-information-and-records/preserving/physical-records-pres/archival-quality-paper-products.aspx
+[anthropology-lamination]: http://anthropology.si.edu/conservation/lamination/lamination_guidelines.htm
+[naa-preserving-paper]: http://www.naa.gov.au/information-management/managing-information-and-records/preserving/artworks.aspx
 
 ### License ###
 
