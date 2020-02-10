@@ -1,0 +1,37 @@
+# paperback: paper backup generator suitable for long-term storage
+# Copyright (C) 2018-2020 Aleksa Sarai <cyphar@cyphar.com>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+[package]
+name = "paperback"
+version = "0.0.0"
+authors = ["Aleksa Sarai <cyphar@cyphar.com>"]
+
+description = "Paper backup generator suitable for long-term storage."
+repository = "https://github.com/cyphar/paperback"
+readme = "README.md"
+
+keywords = ["shamir", "secret", "crypto", "paper", "backup"]
+categories = ["crypography"]
+edition = "2018"
+
+[badges]
+maintenance = { status = "experimental" }
+
+[profile.release]
+# Enable link-time optimisations.
+lto = true
+
+[dependencies]
