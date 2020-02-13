@@ -15,29 +15,23 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 [package]
-name = "paperback"
+name = "paperback-shamir"
 version = "0.0.0"
 authors = ["Aleksa Sarai <cyphar@cyphar.com>"]
 
-description = "Paper backup generator suitable for long-term storage."
+description = "Shamir secret sharing construction using GF(2^32)."
 repository = "https://github.com/cyphar/paperback"
 readme = "README.md"
 
-keywords = ["shamir", "secret", "crypto", "paper", "backup"]
+keywords = ["shamir", "secret", "crypto"]
 categories = ["cryptography"]
 edition = "2018"
 
-[badges]
-maintenance = { status = "experimental" }
-
-[profile.release]
-# Enable link-time optimisations.
-lto = true
-
-[workspace]
-members = [
-	"pkg/paperback-shamir",
-]
-
 [dependencies]
-"paperback-shamir" = { path = "pkg/paperback-shamir" }
+rand = "^0.7"
+itertools = "^0.8"
+serde = { version = "^1", features = ["derive"] }
+
+[dev-dependencies]
+quickcheck = "0.9"
+quickcheck_macros = "0.9"
