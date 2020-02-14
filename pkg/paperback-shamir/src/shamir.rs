@@ -36,6 +36,14 @@ pub struct Shard {
 }
 
 impl Shard {
+    /// Returns the *unique* identifier for a given `Shard`.
+    ///
+    /// If two shards have the same identifier, they cannot be used together for
+    /// secret recovery.
+    pub fn id(&self) -> String {
+        zbase32::encode_full_bytes(&self.x.to_bytes())
+    }
+
     /// Returns the number of *unique* sister `Shard`s required to recover the
     /// stored secret.
     pub fn threshold(&self) -> u32 {
@@ -88,7 +96,7 @@ impl Dealer {
         self.polys
             .iter()
             .map(GfPolynomial::constant)
-            .flat_map(|x| x.as_bytes())
+            .flat_map(|x| x.to_bytes())
             .take(self.secret_len)
             .collect::<Vec<_>>()
     }
@@ -203,7 +211,7 @@ pub fn recover_secret(shards: &[Shard]) -> Vec<u8> {
             let points = xs.zip(ys).collect::<Vec<_>>();
             GfPolynomial::lagrange_constant(threshold - 1, points.as_slice())
         })
-        .flat_map(|x| x.as_bytes())
+        .flat_map(|x| x.to_bytes())
         .take(secret_len)
         .collect::<Vec<_>>()
 }

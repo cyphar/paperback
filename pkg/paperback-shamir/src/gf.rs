@@ -70,7 +70,7 @@ impl GfElem {
     }
 
     // TODO: Should probably make the padding rules more explicit.
-    pub fn as_bytes(&self) -> Vec<u8> {
+    pub fn to_bytes(&self) -> Vec<u8> {
         // TODO: Deal with padding -- currently dealt with by Dealer.
         self.0.to_le_bytes().to_vec()
     }

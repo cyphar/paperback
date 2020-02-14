@@ -16,8 +16,11 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#![forbid(unsafe_code)]
+
 extern crate itertools;
 extern crate rand;
+extern crate zbase32;
 
 #[cfg(test)]
 extern crate quickcheck;

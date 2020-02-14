@@ -28,9 +28,10 @@ categories = ["cryptography"]
 edition = "2018"
 
 [dependencies]
-rand = "^0.7"
 itertools = "^0.8"
+rand = "^0.7"
 serde = { version = "^1", features = ["derive"] }
+zbase32 = "^0.1"
 
 [dev-dependencies]
 quickcheck = "0.9"
