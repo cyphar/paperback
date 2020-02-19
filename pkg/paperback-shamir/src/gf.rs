@@ -39,6 +39,9 @@ pub type GfElemPrimitive = u32;
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 pub struct GfElem(GfElemPrimitive);
 
+/// (x, y) in GF.
+pub type GfPoint = (GfElem, GfElem);
+
 impl GfElem {
     // Can be an arbitrary polynomial, but this one was chosen because it is the
     // smallest (both numerically and in terms of the number of bits set)
@@ -58,7 +61,8 @@ impl GfElem {
     }
 
     // TODO: Should probably make the padding rules more explicit.
-    pub fn from_bytes(bytes: &[u8]) -> Self {
+    pub fn from_bytes<B: AsRef<[u8]>>(bytes: B) -> Self {
+        let bytes = bytes.as_ref();
         assert!(bytes.len() <= mem::size_of::<GfElemPrimitive>(), "");
 
         // Pad with zeroes.
@@ -245,7 +249,8 @@ impl GfPolynomial {
     /// of an unknown polynomial.
     ///
     /// [lagrange]: https://en.wikipedia.org/wiki/Lagrange_polynomial
-    pub fn lagrange_constant(n: GfElemPrimitive, points: &[(GfElem, GfElem)]) -> GfElem {
+    pub fn lagrange_constant<P: AsRef<[GfPoint]>>(n: GfElemPrimitive, points: P) -> GfElem {
+        let points = points.as_ref();
         let k = points.len();
         assert!(
             k == (n + 1) as usize,
@@ -315,7 +320,8 @@ impl GfPolynomial {
     /// values that are not `x == GfElem::ZERO`.
     ///
     /// [lagrange]: https://en.wikipedia.org/wiki/Lagrange_polynomial
-    pub fn lagrange(n: GfElemPrimitive, points: &[(GfElem, GfElem)]) -> Self {
+    pub fn lagrange<P: AsRef<[GfPoint]>>(n: GfElemPrimitive, points: P) -> Self {
+        let points = points.as_ref();
         let k = points.len();
         assert!(
             k == (n + 1) as usize,
@@ -572,7 +578,7 @@ mod test {
             .collect::<Vec<_>>();
         let ys = xs.iter().map(|x| poly.evaluate(*x));
         let points = xs.iter().copied().zip(ys).collect::<Vec<_>>();
-        let interpolated_poly = GfPolynomial::lagrange(n, points.as_slice());
+        let interpolated_poly = GfPolynomial::lagrange(n, points);
 
         TestResult::from_bool(poly == interpolated_poly)
     }

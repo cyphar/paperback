@@ -70,9 +70,10 @@ impl Dealer {
 
     /// Construct a new `Dealer` to shard the `secret`, requiring at least
     /// `threshold` shards to reconstruct the secret.
-    pub fn new(threshold: u32, secret: &[u8]) -> Self {
+    pub fn new<B: AsRef<[u8]>>(threshold: u32, secret: B) -> Self {
         assert!(threshold > 0, "must at least have a threshold of one");
         let k = threshold - 1;
+        let secret = secret.as_ref();
         let polys = secret
             // Generate &[u32] from &[u8], by chunking into sets of four.
             .chunks(mem::size_of::<GfElemPrimitive>())
@@ -137,8 +138,9 @@ impl Dealer {
     /// This operation is significantly slower than `recover_secret`, so it
     /// should only be used if it is necessary to construct additional shards
     /// with `Dealer::next_shard`.
-    pub fn recover(shards: &[Shard]) -> Self {
+    pub fn recover<S: AsRef<[Shard]>>(shards: S) -> Self {
         // TODO: Add -> Result<Self, _>.
+        let shards = shards.as_ref();
         assert!(shards.len() > 0, "must be provided more than one shard");
 
         let threshold = shards[0].threshold;
@@ -182,8 +184,9 @@ impl Dealer {
 /// always be used if the caller only needs to recover the secret.
 /// `Dealer::recover` should only be used if the caller needs to create
 /// additional shards with `Dealer::next_shard`.
-pub fn recover_secret(shards: &[Shard]) -> Vec<u8> {
+pub fn recover_secret<S: AsRef<[Shard]>>(shards: S) -> Vec<u8> {
     // TODO: Add -> Result<Vec<u8>, _>.
+    let shards = shards.as_ref();
     assert!(shards.len() > 0, "must be provided more than one shard");
 
     let threshold = shards[0].threshold;
@@ -228,7 +231,7 @@ mod test {
             return TestResult::discard();
         }
         let dealer = Dealer::new(n, &secret);
-        TestResult::from_bool(secret.to_vec() == dealer.secret())
+        TestResult::from_bool(secret == dealer.secret())
     }
 
     #[quickcheck]
@@ -246,7 +249,7 @@ mod test {
             })
             .collect::<Vec<_>>();
 
-        TestResult::from_bool(recover_secret(&shards) != secret)
+        TestResult::from_bool(recover_secret(shards) != secret)
     }
 
     #[quickcheck]
@@ -258,23 +261,20 @@ mod test {
         let dealer = Dealer::new(n, &secret);
         let shards = (0..n).map(|_| dealer.next_shard()).collect::<Vec<_>>();
 
-        TestResult::from_bool(recover_secret(&shards) == secret)
+        TestResult::from_bool(recover_secret(shards) == secret)
     }
 
     #[quickcheck]
     fn recover_success(n: u32, secret: Vec<u8>) -> TestResult {
-        // Invalid data.
-        if n < 2 {
-            return TestResult::discard();
-        }
-        // Even moderately large n values take a very long time to fully recover.
-        if n > 8 {
+        // Invalid data. Even moderately large n values take a very long time to
+        // fully recover.
+        if n < 2 || n > 8 {
             return TestResult::discard();
         }
 
-        let dealer = Dealer::new(n, &secret);
+        let dealer = Dealer::new(n, secret);
         let shards = (0..n).map(|_| dealer.next_shard()).collect::<Vec<_>>();
-        let recovered_dealer = Dealer::recover(&shards);
+        let recovered_dealer = Dealer::recover(shards);
 
         TestResult::from_bool(dealer.polys == recovered_dealer.polys)
     }
