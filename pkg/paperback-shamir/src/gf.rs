@@ -107,22 +107,43 @@ impl GfElem {
 
 impl Add for GfElem {
     type Output = Self;
-    fn add(self, rhs: Self) -> Self::Output {
-        Self(self.0 ^ rhs.0)
+    fn add(mut self, rhs: Self) -> Self::Output {
+        self += rhs;
+        self
+    }
+}
+
+impl AddAssign for GfElem {
+    fn add_assign(&mut self, rhs: Self) {
+        self.0 ^= rhs.0
     }
 }
 
 impl Sub for GfElem {
     type Output = Self;
-    fn sub(self, rhs: Self) -> Self::Output {
+    fn sub(mut self, rhs: Self) -> Self::Output {
+        self -= rhs;
+        self
+    }
+}
+
+impl SubAssign for GfElem {
+    fn sub_assign(&mut self, rhs: Self) {
         // Subtraction in GF(2^n) is identical to addition.
-        self + rhs
+        *self += rhs
     }
 }
 
 impl Mul for GfElem {
     type Output = Self;
-    fn mul(self, rhs: Self) -> Self::Output {
+    fn mul(mut self, rhs: Self) -> Self::Output {
+        self *= rhs;
+        self
+    }
+}
+
+impl MulAssign for GfElem {
+    fn mul_assign(&mut self, rhs: Self) {
         // A modified and hopefully-constant-time implementation of Russian
         // Peasant Multiplication which avoids branching by using masks instead.
         //   <https://en.wikipedia.org/wiki/Finite_field_arithmetic#D_programming_example>
@@ -136,38 +157,23 @@ impl Mul for GfElem {
             a = (((a as u64) << 1) ^ (Self::POLYNOMIAL & mask)) as GfElemPrimitive;
             b >>= 1;
         }
-        return GfElem(p);
+
+        // Save the product.
+        self.0 = p;
     }
 }
 
 impl Div for GfElem {
     type Output = Self;
-    fn div(self, rhs: Self) -> Self::Output {
-        self * rhs.inverse().expect("rhs cannot be inverted")
-    }
-}
-
-impl AddAssign for GfElem {
-    fn add_assign(&mut self, rhs: Self) {
-        *self = *self + rhs
-    }
-}
-
-impl SubAssign for GfElem {
-    fn sub_assign(&mut self, rhs: Self) {
-        *self = *self - rhs
-    }
-}
-
-impl MulAssign for GfElem {
-    fn mul_assign(&mut self, rhs: Self) {
-        *self = *self * rhs
+    fn div(mut self, rhs: Self) -> Self::Output {
+        self /= rhs;
+        self
     }
 }
 
 impl DivAssign for GfElem {
     fn div_assign(&mut self, rhs: Self) {
-        *self = *self / rhs
+        *self *= rhs.inverse().expect("rhs cannot be inverted")
     }
 }
 
@@ -544,8 +550,14 @@ mod test {
     }
 
     #[quickcheck]
-    fn polynomial(poly: GfPolynomial, x: GfElem) -> bool {
+    fn polynomial_evaluate(poly: GfPolynomial, x: GfElem) -> bool {
         poly.evaluate(x) == manual_poly(poly, x)
+    }
+
+    #[quickcheck]
+    fn polynomial_add_distributivity(a: GfPolynomial, b: GfPolynomial, x: GfElem) -> bool {
+        let ab = a.clone() + b.clone();
+        ab.evaluate(x) == a.evaluate(x) + b.evaluate(x)
     }
 
     #[quickcheck]

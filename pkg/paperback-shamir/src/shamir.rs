@@ -236,7 +236,10 @@ mod test {
 
     #[quickcheck]
     fn recover_secret_fail(n: u32, secret: Vec<u8>) -> TestResult {
-        if n < 2 || secret.len() < 1 {
+        // Invalid data. Note that large n values take a very long time to
+        // recover the secret. This is proportional to secret.len(), which is
+        // controlled by quickcheck and thus can be quite large.
+        if n < 2 || n > 32 || secret.len() < 1 {
             return TestResult::discard();
         }
 
@@ -254,7 +257,10 @@ mod test {
 
     #[quickcheck]
     fn recover_secret_success(n: u32, secret: Vec<u8>) -> TestResult {
-        if n < 1 {
+        // Invalid data. Note that large n values take a very long time to
+        // recover the secret. This is proportional to secret.len(), which is
+        // controlled by quickcheck and thus can be quite large.
+        if n < 1 || n > 32 {
             return TestResult::discard();
         }
 
@@ -266,8 +272,8 @@ mod test {
 
     #[quickcheck]
     fn recover_success(n: u32, secret: Vec<u8>) -> TestResult {
-        // Invalid data. Even moderately large n values take a very long time to
-        // fully recover.
+        // Invalid data. Note that even moderately large n values take a very
+        // long time to fully recover. This is proportional to secret.len().
         if n < 2 || n > 8 {
             return TestResult::discard();
         }
