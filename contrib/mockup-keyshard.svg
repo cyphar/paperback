@@ -1,0 +1,664 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="148mm"
+   height="210mm"
+   viewBox="0 0 148 210"
+   version="1.1"
+   id="svg8"
+   inkscape:version="0.92.4 (5da689c313, 2019-01-14)"
+   sodipodi:docname="mockup-keyshard.svg"
+   inkscape:export-filename="/home/cyphar/src/paperback/contrib/mockup-keyshard.png"
+   inkscape:export-xdpi="299.96188"
+   inkscape:export-ydpi="299.96188">
+  <defs
+     id="defs2">
+    <marker
+       inkscape:stockid="Scissors"
+       orient="auto"
+       refY="0"
+       refX="0"
+       id="marker2188"
+       style="overflow:visible"
+       inkscape:isstock="true">
+      <path
+         id="path2186"
+         d="M 9.0898857,-3.6061018 C 8.1198849,-4.7769976 6.3697607,-4.7358294 5.0623558,-4.2327734 l -8.2124046,3.0779029 c -2.3882933,-1.3067135 -4.7482873,-0.9325372 -4.7482873,-1.5687873 0,-0.4973164 0.4566662,-0.3883222 0.3883068,-1.6831941 -0.065635,-1.2432767 -1.3635771,-2.1630796 -2.5903987,-2.0816435 -1.227271,-0.00735 -2.499439,0.9331613 -2.510341,2.2300611 -0.09143,1.3063864 1.007209,2.5196896 2.306764,2.6052316 1.5223406,0.2266616 4.218258,-0.6955566 5.482945,1.57086006 -0.9422847,1.73825774 -2.6140244,1.74307674 -4.1255107,1.65607034 -1.2548743,-0.072235 -2.7620933,0.2873979 -3.3606483,1.5208605 -0.578367,1.1820862 -0.0112,2.8646022 1.316749,3.226412 1.3401912,0.4918277 3.1806689,-0.129711 3.4993722,-1.6707242 0.2456585,-1.187823 -0.5953659,-1.7459574 -0.2725074,-2.1771537 0.2436135,-0.32536 1.7907806,-0.1368452 4.5471053,-1.3748244 L 5.6763468,4.2330688 C 6.8000164,4.5467672 8.1730685,4.5362646 9.1684433,3.4313614 l -9.22008423,-3.48508362 z m -18.3078016,-1.900504 c 1.294559,0.7227998 1.1888392,2.6835702 -0.1564272,3.0632889 -1.2165179,0.423661 -2.7710269,-0.7589694 -2.3831779,-2.0774648 0.227148,-1.0818519 1.653387,-1.480632 2.5396051,-0.9858241 z m 0.056264,8.0173649 c 1.3508301,0.4988648 1.1214429,2.7844356 -0.2522207,3.091609 -0.9110597,0.3163391 -2.2135497,-0.1387976 -2.3056967,-1.2121394 -0.177609,-1.305055 1.356085,-2.4841482 2.5579174,-1.8794696 z"
+         style="fill:#2ca02c;fill-opacity:1;stroke:#2ca02c;stroke-opacity:1"
+         inkscape:connector-curvature="0" />
+    </marker>
+    <marker
+       inkscape:stockid="CurvyCross"
+       orient="auto"
+       refY="0"
+       refX="0"
+       id="CurvyCross"
+       style="overflow:visible"
+       inkscape:isstock="true">
+      <g
+         id="g2040"
+         transform="scale(0.6)"
+         style="fill:#000000;fill-opacity:1;stroke:#000000;stroke-opacity:1">
+        <path
+           id="path2036"
+           d="m 4.625493,-5.0456926 c -2.76,0 -5.00000002,2.24 -5.00000002,5.00000002 0,2.75999998 2.24000002,4.99999998 5.00000002,4.99999998"
+           style="fill:#000000;fill-opacity:1;fill-rule:evenodd;stroke:#000000;stroke-width:1.00000003pt;stroke-opacity:1"
+           inkscape:connector-curvature="0" />
+        <path
+           id="path2038"
+           d="m -5.4129913,-5.0456926 c 2.76,0 4.99999999,2.24 4.99999999,5.00000002 0,2.75999998 -2.23999999,4.99999998 -4.99999999,4.99999998"
+           style="fill:#000000;fill-opacity:1;fill-rule:evenodd;stroke:#000000;stroke-width:1.00000003pt;stroke-opacity:1"
+           inkscape:connector-curvature="0" />
+      </g>
+    </marker>
+    <marker
+       inkscape:stockid="Scissors"
+       orient="auto"
+       refY="0"
+       refX="0"
+       id="Scissors"
+       style="overflow:visible"
+       inkscape:isstock="true">
+      <path
+         id="schere"
+         d="M 9.0898857,-3.6061018 C 8.1198849,-4.7769976 6.3697607,-4.7358294 5.0623558,-4.2327734 l -8.2124046,3.0779029 c -2.3882933,-1.3067135 -4.7482873,-0.9325372 -4.7482873,-1.5687873 0,-0.4973164 0.4566662,-0.3883222 0.3883068,-1.6831941 -0.065635,-1.2432767 -1.3635771,-2.1630796 -2.5903987,-2.0816435 -1.227271,-0.00735 -2.499439,0.9331613 -2.510341,2.2300611 -0.09143,1.3063864 1.007209,2.5196896 2.306764,2.6052316 1.5223406,0.2266616 4.218258,-0.6955566 5.482945,1.57086006 -0.9422847,1.73825774 -2.6140244,1.74307674 -4.1255107,1.65607034 -1.2548743,-0.072235 -2.7620933,0.2873979 -3.3606483,1.5208605 -0.578367,1.1820862 -0.0112,2.8646022 1.316749,3.226412 1.3401912,0.4918277 3.1806689,-0.129711 3.4993722,-1.6707242 0.2456585,-1.187823 -0.5953659,-1.7459574 -0.2725074,-2.1771537 0.2436135,-0.32536 1.7907806,-0.1368452 4.5471053,-1.3748244 L 5.6763468,4.2330688 C 6.8000164,4.5467672 8.1730685,4.5362646 9.1684433,3.4313614 l -9.22008423,-3.48508362 z m -18.3078016,-1.900504 c 1.294559,0.7227998 1.1888392,2.6835702 -0.1564272,3.0632889 -1.2165179,0.423661 -2.7710269,-0.7589694 -2.3831779,-2.0774648 0.227148,-1.0818519 1.653387,-1.480632 2.5396051,-0.9858241 z m 0.056264,8.0173649 c 1.3508301,0.4988648 1.1214429,2.7844356 -0.2522207,3.091609 -0.9110597,0.3163391 -2.2135497,-0.1387976 -2.3056967,-1.2121394 -0.177609,-1.305055 1.356085,-2.4841482 2.5579174,-1.8794696 z"
+         style="fill:#000000;fill-opacity:1;stroke:#000000;stroke-opacity:1"
+         inkscape:connector-curvature="0" />
+    </marker>
+    <marker
+       inkscape:stockid="Arrow1Lstart"
+       orient="auto"
+       refY="0"
+       refX="0"
+       id="Arrow1Lstart"
+       style="overflow:visible"
+       inkscape:isstock="true">
+      <path
+         id="path1316"
+         d="M 0,0 5,-5 -12.5,0 5,5 Z"
+         style="fill-rule:evenodd;stroke:#000000;stroke-width:1.00000003pt"
+         transform="matrix(0.8,0,0,0.8,10,0)"
+         inkscape:connector-curvature="0" />
+    </marker>
+  </defs>
+  <sodipodi:namedview
+     id="base"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:pageopacity="1"
+     inkscape:pageshadow="2"
+     inkscape:zoom="1.0408"
+     inkscape:cx="305.18869"
+     inkscape:cy="408.67023"
+     inkscape:document-units="mm"
+     inkscape:current-layer="layer1"
+     showgrid="false"
+     showguides="true"
+     inkscape:guide-bbox="true"
+     inkscape:window-width="1920"
+     inkscape:window-height="1042"
+     inkscape:window-x="0"
+     inkscape:window-y="18"
+     inkscape:window-maximized="0" />
+  <metadata
+     id="metadata5">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title></dc:title>
+        <dc:creator>
+          <cc:Agent>
+            <dc:title>Aleksa Sarai &lt;cyphar@cyphar.com&gt;</dc:title>
+          </cc:Agent>
+        </dc:creator>
+        <dc:rights>
+          <cc:Agent>
+            <dc:title>Copyright (C) 2020 Aleksa Sarai &lt;cyphar@cyphar.com&gt;</dc:title>
+          </cc:Agent>
+        </dc:rights>
+        <cc:license
+           rdf:resource="http://creativecommons.org/licenses/by-sa/4.0/" />
+        <dc:source>https://github.com/cyphar/paperback</dc:source>
+      </cc:Work>
+      <cc:License
+         rdf:about="http://creativecommons.org/licenses/by-sa/4.0/">
+        <cc:permits
+           rdf:resource="http://creativecommons.org/ns#Reproduction" />
+        <cc:permits
+           rdf:resource="http://creativecommons.org/ns#Distribution" />
+        <cc:requires
+           rdf:resource="http://creativecommons.org/ns#Notice" />
+        <cc:requires
+           rdf:resource="http://creativecommons.org/ns#Attribution" />
+        <cc:permits
+           rdf:resource="http://creativecommons.org/ns#DerivativeWorks" />
+        <cc:requires
+           rdf:resource="http://creativecommons.org/ns#ShareAlike" />
+      </cc:License>
+    </rdf:RDF>
+  </metadata>
+  <g
+     inkscape:groupmode="layer"
+     id="layer2"
+     inkscape:label="Background"
+     transform="translate(0,-87)">
+    <rect
+       style="display:inline;opacity:1;vector-effect:none;fill:#2ca02c;fill-opacity:1;stroke:none;stroke-width:0.22255199;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+       id="rect104"
+       width="150.96161"
+       height="10.583333"
+       x="-0.7596367"
+       y="122.6018" />
+    <rect
+       y="186.631"
+       x="-1.326601"
+       height="10.583333"
+       width="150.72171"
+       id="rect116"
+       style="display:inline;opacity:1;vector-effect:none;fill:#2ca02c;fill-opacity:1;stroke:none;stroke-width:0.22237508;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+    <rect
+       style="display:inline;opacity:1;vector-effect:none;fill:#2ca02c;fill-opacity:1;stroke:none;stroke-width:0.22223562;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+       id="rect711"
+       width="150.53271"
+       height="10.583333"
+       x="-1.326601"
+       y="241.13527" />
+  </g>
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1"
+     style="display:inline"
+     transform="translate(0,-87)">
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:10.58333302px;line-height:1.25;font-family:CozetteVector;-inkscape-font-specification:CozetteVector;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.26458332"
+       x="144.97804"
+       y="98.299294"
+       id="text24"><tspan
+         sodipodi:role="line"
+         x="144.97804"
+         y="98.299294"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:CozetteVector;-inkscape-font-specification:CozetteVector;text-align:end;text-anchor:end;fill:#2ca02c;stroke-width:0.26458332"
+         id="tspan26">Key Shard</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:10.58333302px;line-height:1.25;font-family:CozetteVector;-inkscape-font-specification:CozetteVector;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.26458332"
+       x="4.5378337"
+       y="129.65666"
+       id="text4561"><tspan
+         sodipodi:role="line"
+         x="4.5378337"
+         y="129.65666"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:4.93888903px;font-family:'B612 Mono';-inkscape-font-specification:'B612 Mono';fill:#ffffff;fill-opacity:1;stroke-width:0.26458332"
+         id="tspan4563"><tspan
+   style="font-weight:bold;fill:#ffffff;fill-opacity:1"
+   id="tspan501">①</tspan> Shard</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:10.58333302px;line-height:1.25;font-family:CozetteVector;-inkscape-font-specification:CozetteVector;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.26458332"
+       x="15.308036"
+       y="115.76041"
+       id="text4577"><tspan
+         sodipodi:role="line"
+         id="tspan4575"
+         x="15.308036"
+         y="127.66666"
+         style="stroke-width:0.26458332" /></text>
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:10.58333302px;line-height:1.25;font-family:CozetteVector;-inkscape-font-specification:CozetteVector;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.26458332"
+       x="4.008667"
+       y="193.73524"
+       id="text4585"><tspan
+         sodipodi:role="line"
+         x="4.008667"
+         y="193.73524"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:4.93888903px;font-family:'B612 Mono';-inkscape-font-specification:'B612 Mono';fill:#ffffff;fill-opacity:1;stroke-width:0.26458332"
+         id="tspan4583"><tspan
+   style="font-weight:bold;fill:#ffffff;fill-opacity:1"
+   id="tspan503">②</tspan> Checksum</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:8.02392101px;line-height:1.25;font-family:CozetteVector;-inkscape-font-specification:CozetteVector;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.20059803"
+       x="4.1193504"
+       y="102.92519"
+       id="text4603"><tspan
+         sodipodi:role="line"
+         x="4.1193504"
+         y="102.92519"
+         style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:7.48899364px;font-family:'B612 Mono';-inkscape-font-specification:'B612 Mono Bold';text-align:start;text-anchor:start;fill:#2ca02c;stroke-width:0.20059803"
+         id="tspan5041">hxdisc4y</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:10.58333302px;line-height:0.05;font-family:CozetteVector;-inkscape-font-specification:CozetteVector;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.26458332"
+       x="50.142635"
+       y="110.3904"
+       id="text4617"><tspan
+         sodipodi:role="line"
+         x="50.142635"
+         y="110.3904"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.52777767px;line-height:0;font-family:'B612 Mono';-inkscape-font-specification:'B612 Mono';stroke-width:0.26458332"
+         id="tspan673">This is a <tspan
+   style="font-style:italic;fill:#2ca02c"
+   id="tspan650">key shard</tspan> of a paperback backup.</tspan><tspan
+         sodipodi:role="line"
+         x="50.142635"
+         y="114.90865"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.52777767px;line-height:0;font-family:'B612 Mono';-inkscape-font-specification:'B612 Mono';stroke-width:0.26458332"
+         id="tspan4191">See <tspan
+   style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.52777767px;line-height:0;font-family:'B612 Mono';-inkscape-font-specification:'B612 Mono';text-decoration: underline;text-decoration-line: underline;fill:#0000ff"
+   id="tspan5167"
+   text-decoration="underline">cyphar.com/paperback</tspan> for more details.</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:10.58333302px;line-height:1.25;font-family:CozetteVector;-inkscape-font-specification:CozetteVector;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.26458332"
+       x="527.59003"
+       y="28.928661"
+       id="text4645"><tspan
+         sodipodi:role="line"
+         id="tspan4643"
+         x="527.59003"
+         y="40.834911"
+         style="stroke-width:0.26458332" /></text>
+    <image
+       y="199.63728"
+       x="5.2903781"
+       id="image4974"
+       xlink:href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAG8AAABvAQMAAADYCwwjAAAABlBMVEUAAAD///+l2Z/dAAAAAnRS TlP//8i138cAAAAJcEhZcwAACxIAAAsSAdLdfvwAAAEgSURBVDiN1dQ7jsQgDAZgRynoJheIxDXS cSVygTwuMHMlOq6BlAtAR4Hi/dGslN1iY5op1t0XiWA7doh/Bf0PRqLFhNmPRFpk4mIn/eKycgPd uOA6V6xqop3659TK1Y9WjU3kMnsa/JXkDVEviv1Z/g1rZL07fTX2b0bCqbFjVCGTXf80OnnqcgN9 eJjS8XEqmZH6DQ8zn0Yme3xQ6ljvWeZpenR+Rsm+hWFgnO3fFwmc6hXJ6c1okdGEOio4yA0k3l2w hGCRyaGTyL+svoHM+Eav/J2VQEedo5mJlExEcrXqOMnExFpTBnTes0jswlJHRUfTQKykCqSQWxPn fGyEodUttIYeVK5X3bDuL6es34tzz1qvQhVHNDI/98v9FL8AN+YmmockGpgAAAAASUVORK5CYII= "
+       preserveAspectRatio="none"
+       height="33.278408"
+       width="33.278408" />
+    <flowRoot
+       xml:space="preserve"
+       id="flowRoot5069"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:40px;line-height:1.25;font-family:CozetteVector;-inkscape-font-specification:CozetteVector;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none"><flowRegion
+         id="flowRegion5071"><rect
+           id="rect5073"
+           width="232.33508"
+           height="177.78685"
+           x="527.29962"
+           y="29.534632" /></flowRegion><flowPara
+         id="flowPara5075" /></flowRoot>    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:10.58333302px;line-height:1.25;font-family:CozetteVector;-inkscape-font-specification:CozetteVector;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.26458332"
+       x="69.490074"
+       y="217.35367"
+       id="text5375"><tspan
+         sodipodi:role="line"
+         id="tspan5373"
+         x="69.490074"
+         y="229.25992"
+         style="stroke-width:0.26458332" /></text>
+    <flowRoot
+       xml:space="preserve"
+       id="flowRoot5465"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:40px;line-height:1.25;font-family:CozetteVector;-inkscape-font-specification:CozetteVector;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none"><flowRegion
+         id="flowRegion5467"><rect
+           id="rect5469"
+           width="812.16266"
+           height="218.19295"
+           x="-880.85303"
+           y="-44.206505" /></flowRegion><flowPara
+         id="flowPara5471" /></flowRoot>    <text
+       id="text5481"
+       y="103.65849"
+       x="144.97806"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:10.58333302px;line-height:1.25;font-family:CozetteVector;-inkscape-font-specification:CozetteVector;text-align:end;letter-spacing:0px;word-spacing:0px;text-anchor:end;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.26458332"
+       xml:space="preserve"><tspan
+         id="tspan5479"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:4.93888903px;font-family:CozetteVector;-inkscape-font-specification:CozetteVector;text-align:end;text-anchor:end;fill:#cccccc;stroke-width:0.26458332"
+         y="103.65849"
+         x="144.97806"
+         sodipodi:role="line">paperback-v0</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:10.58333302px;line-height:1.25;font-family:CozetteVector;-inkscape-font-specification:CozetteVector;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.26458332"
+       x="-7.0870533"
+       y="10.305058"
+       id="text5485"><tspan
+         sodipodi:role="line"
+         id="tspan5483"
+         x="-7.0870533"
+         y="22.211308"
+         style="stroke-width:0.26458332" /></text>
+    <flowRoot
+       xml:space="preserve"
+       id="flowRoot5491"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:40px;line-height:1.25;font-family:CozetteVector;-inkscape-font-specification:CozetteVector;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none"><flowRegion
+         id="flowRegion5493"><rect
+           id="rect5495"
+           width="190.91884"
+           height="182.83762"
+           x="202.0305"
+           y="-67.44001" /></flowRegion><flowPara
+         id="flowPara5497" /></flowRoot>    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:8.02392101px;line-height:1.25;font-family:CozetteVector;-inkscape-font-specification:CozetteVector;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.20059803"
+       x="4.1460962"
+       y="95.174911"
+       id="text5545"><tspan
+         sodipodi:role="line"
+         id="tspan5543"
+         x="4.1460962"
+         y="95.174911"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:2.67464042px;font-family:'B612 Mono';-inkscape-font-specification:'B612 Mono';fill:#666666;stroke-width:0.20059803">Shard</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-weight:normal;font-size:10.58333302px;line-height:0.1;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.26458332"
+       x="146.15634"
+       y="127.2758"
+       id="text10655"><tspan
+         sodipodi:role="line"
+         x="146.15634"
+         y="127.2758"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:2.82222223px;line-height:0px;font-family:'B612 Mono';-inkscape-font-specification:'B612 Mono';text-align:end;letter-spacing:0px;baseline-shift:baseline;text-anchor:end;fill:#ffffff;fill-opacity:1;stroke-width:0.26458332"
+         id="tspan621"><tspan
+   style="font-weight:bold"
+   id="tspan4451">Key shard</tspan> data, encrypted with the <tspan
+   style="font-weight:bold"
+   id="tspan4455">shard codewords</tspan> below.</tspan><tspan
+         sodipodi:role="line"
+         x="146.15634"
+         y="130.09157"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:2.82222223px;line-height:0px;font-family:'B612 Mono';-inkscape-font-specification:'B612 Mono';text-align:end;letter-spacing:0px;baseline-shift:baseline;text-anchor:end;fill:#ffffff;fill-opacity:1;stroke-width:0.26458332"
+         id="tspan630">Contains a proof of this <tspan
+   style="font-weight:bold"
+   id="tspan8194">key shard</tspan>'s identity.</tspan></text>
+    <text
+       id="text349"
+       y="209.5708"
+       x="145.26735"
+       style="font-style:normal;font-weight:normal;font-size:10.58333302px;line-height:1.25;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.26458332"
+       xml:space="preserve"><tspan
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:2.82222223px;font-family:'B612 Mono';-inkscape-font-specification:'B612 Mono';text-align:end;letter-spacing:-0.13229167px;text-anchor:end;fill:#b3b3b3;stroke-width:0.26458332"
+         y="209.5708"
+         x="145.13506"
+         id="tspan347"
+         sodipodi:role="line">text fallback if barcode scanning fails</tspan></text>
+    <text
+       id="text365"
+       y="215.53447"
+       x="44.425888"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:10.58333302px;line-height:0.25;font-family:CozetteVector;-inkscape-font-specification:CozetteVector;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.26458332"
+       xml:space="preserve"><tspan
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.52777767px;line-height:0;font-family:'B612 Mono';-inkscape-font-specification:'B612 Mono';fill:#000000;stroke-width:0.26458332"
+         y="215.53447"
+         x="44.425888"
+         sodipodi:role="line"
+         id="tspan398">hwd1 yrer fdwz y6oq kbts 7sij 1q6p nrnn n4pc</tspan><tspan
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.52777767px;line-height:0;font-family:'B612 Mono';-inkscape-font-specification:'B612 Mono';fill:#b3b3b3;stroke-width:0.26458332"
+         y="221.11104"
+         x="44.425888"
+         sodipodi:role="line"
+         id="tspan644"><tspan
+   id="tspan3656"
+   style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.52777767px;line-height:0;font-family:'B612 Mono';-inkscape-font-specification:'B612 Mono';fill:#000000;stroke-width:0.26458332"><tspan
+   style="fill:#666666"
+   id="tspan4114">scep euc6 kh8t</tspan> </tspan><tspan
+   style="fill:#666666"
+   id="tspan648">8njj q7rj edr</tspan>- ---- ---- ----</tspan><tspan
+         id="tspan363"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:5.64444447px;line-height:0;font-family:Inconsolata;-inkscape-font-specification:Inconsolata;fill:#000000;stroke-width:0.26458332"
+         y="226.68762"
+         x="44.425888"
+         sodipodi:role="line" /></text>
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-weight:normal;font-size:10.58333302px;line-height:0.1;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.26458332"
+       x="145.15446"
+       y="192.73547"
+       id="text409"><tspan
+         sodipodi:role="line"
+         x="145.15446"
+         y="192.73547"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:2.82222223px;line-height:0px;font-family:'B612 Mono';-inkscape-font-specification:'B612 Mono';text-align:end;letter-spacing:0px;baseline-shift:baseline;text-anchor:end;fill:#ffffff;fill-opacity:1;stroke-width:0.26458332"
+         id="tspan3032">Verifies that the <tspan
+   style="font-style:normal;font-weight:bold;fill:#ffffff;fill-opacity:1"
+   id="tspan424">key shard </tspan>has been correctly scanned.</tspan></text>
+    <image
+       y="141.61777"
+       x="3.0307746"
+       id="image531"
+       xlink:href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMMAAADDAQMAAAAFsTfpAAAABlBMVEUAAAD///+l2Z/dAAAAAnRS
+TlP//8i138cAAAAJcEhZcwAACxIAAAsSAdLdfvwAAAOJSURBVFiF7ZdNjqMwEEYrYsEOLoDka3jn
+KyUXCHABuJJ3XAPJF4CdFwjPKzo96ll0S6neTpSOWnlRyqmf7ytL+e4h/8mPZBN5ZGmLSL0+/SEi
+bZSblezluNdu8keb136pJnHzwptWEjvIntMp6610zyDtIo/fEJ8G4ixVyYf4Mv+OPKUTX81RxK+P
+5XeEHJBUgiyEcvty9F+y8y7R+izdP88vlXuXXI+uL0kjFKrN65euepNsQZ6ha6QiYL90beko+81K
+eOzL2gQ31GsDjAS0kz0TRyHVHmgfSCyzmZRqzBz5uPtq8Fp5YprJ5o+nZ9rcQOMUaYC+jGYS3FZr
+U4+0JKmt0xjXh5WUZUUPmrDe68JHGr/ecjVbyempkCu5nEHuQceuj1Wxkj3Ty/KIbqqPWyaXFdow
+m0l0Y3YTQWQV34kkmqi1ki3okIlP1HyStFOiujMT+m5HosJxFZykplI+T/0+KZHzuknoxzQIERCt
+NFrJ5qutRt0TE3wP6H1FVnYroXcar/14hmqo09Xdf7vqbbIFzohEVXNGYxgXhNAVKynlaGqMERnA
+Lo4m8JGjNZPoTs8XY7Gcd33WJEOl1EgyQai2G1RHXVk+qmQkm6caHFP95xmOR6YZX9kxkLPGaSvt
+IP4hr0UtqLWSHT8sSJQbFzKq1jGW14ZiIgycIKW65iz8CG3z2Uo22hAr89Ln7o6mYhqfXWUgZ9AI
+jTC1ao+IAYK6WwlBEL/Lyujxo8XKPtXfQPgjDkUeeDsfjMgQXl1lIHtJJSJ+h3osJFanr0YrYafo
+4/Gsqy2o3rfYuBQzOYUfjVfQNZ0Enbkxf2i8hVDePpcJjY9pxiQF6Xqd2kAY2T2ioyjoxy7mTknF
+Sra6uy3rU5WPIeaVlLxOYCD4DzI/s1MsaULma92keispeUUGyqJirM1YV9wqzGSP+A9frzuUqvui
+a12xkpNl06fz0r+7KmjHKN/MRFAp7kksiViZXFr1imMg5I/JYJs4uYcF+sjpHFvJRrPU6JPuX5tP
+PPf8cnQDwRtb9RyOjyogz6pYNzshFMdEkvEfucWKjXu3kus6QgI6LiV95DKRxpf/WIgW2SN+nB2N
+YYgptdvNBNnjXsicqZpeZZfu8QvCZe4MGpAcIIHz553JRq47ky4Ug94A+FTXm4kOB7InbUEPdGGc
+woc3Wsi1bCbUbtJtnUKx/sjDSr57/Cc/kT/AorrLwP/hegAAAABJRU5ErkJggg==
+"
+       preserveAspectRatio="none"
+       height="37.797615"
+       width="37.797615" />
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-weight:normal;font-size:10.58333302px;line-height:1.25;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.26458332"
+       x="144.32817"
+       y="137.81798"
+       id="text553"><tspan
+         sodipodi:role="line"
+         id="tspan551"
+         x="144.19588"
+         y="137.81798"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:2.82222223px;font-family:'B612 Mono';-inkscape-font-specification:'B612 Mono';text-align:end;letter-spacing:-0.13229167px;text-anchor:end;fill:#b3b3b3;stroke-width:0.26458332">text fallback if barcode scanning fails</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:10.58333302px;line-height:0.25;font-family:CozetteVector;-inkscape-font-specification:CozetteVector;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.26458332"
+       x="43.38969"
+       y="143.3544"
+       id="text567"><tspan
+         sodipodi:role="line"
+         x="43.38969"
+         y="143.3544"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.52777767px;line-height:0;font-family:'B612 Mono';-inkscape-font-specification:'B612 Mono';fill:#000000;stroke-width:0.26458332"
+         id="tspan586">hzim h1pi c8r7 rnuk qntc 9rcb acte makm kyqp</tspan><tspan
+         sodipodi:role="line"
+         x="43.38969"
+         y="148.93097"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.52777767px;line-height:0;font-family:'B612 Mono';-inkscape-font-specification:'B612 Mono';fill:#666666;stroke-width:0.26458332"
+         id="tspan590"><tspan
+   id="tspan4118"
+   style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.52777767px;line-height:0;font-family:'B612 Mono';-inkscape-font-specification:'B612 Mono';fill:#000000;stroke-width:0.26458332">h6b9 ciey s33i </tspan>dz67 ue37 8uek 44nw 1hxx bkjy</tspan><tspan
+         sodipodi:role="line"
+         x="43.38969"
+         y="154.50755"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.52777767px;line-height:0;font-family:'B612 Mono';-inkscape-font-specification:'B612 Mono';fill:#000000;stroke-width:0.26458332"
+         id="tspan592"><tspan
+   id="tspan4122"
+   style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.52777767px;line-height:0;font-family:'B612 Mono';-inkscape-font-specification:'B612 Mono';fill:#666666;stroke-width:0.26458332">7h3n m1z1 x3mx 3y9m i138 imdm </tspan>6kfs nyxx pygi</tspan><tspan
+         sodipodi:role="line"
+         x="43.38969"
+         y="160.08412"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.52777767px;line-height:0;font-family:'B612 Mono';-inkscape-font-specification:'B612 Mono';fill:#000000;stroke-width:0.26458332"
+         id="tspan594">co1s fr6q 94a7 gyyh ymsz ya31 ac8t yadg py4j</tspan><tspan
+         sodipodi:role="line"
+         x="43.38969"
+         y="165.66071"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.52777767px;line-height:0;font-family:'B612 Mono';-inkscape-font-specification:'B612 Mono';fill:#666666;stroke-width:0.26458332"
+         id="tspan4128">sddj pdpd izx6 p75a bey9 6tyw r114 5epq 3i3t</tspan><tspan
+         sodipodi:role="line"
+         x="43.38969"
+         y="171.23727"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.52777767px;line-height:0;font-family:'B612 Mono';-inkscape-font-specification:'B612 Mono';fill:#000000;stroke-width:0.26458332"
+         id="tspan596"><tspan
+   id="tspan4132"
+   style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.52777767px;line-height:0;font-family:'B612 Mono';-inkscape-font-specification:'B612 Mono';fill:#666666;stroke-width:0.26458332">u4s8 xuqj 9hoz </tspan>jq3j mnms g8c8 wsi9 q6mn uqe6</tspan><tspan
+         id="tspan563"
+         sodipodi:role="line"
+         x="43.38969"
+         y="176.81384"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.52777767px;line-height:0;font-family:'B612 Mono';-inkscape-font-specification:'B612 Mono';fill:#000000;stroke-width:0.26458332">5r5e nsh8 bo91 tf78 1w8b 647g <tspan
+   style="fill:#666666"
+   id="tspan602">k55p uofp k8ai</tspan></tspan><tspan
+         sodipodi:role="line"
+         x="43.38969"
+         y="182.39043"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.52777767px;line-height:0;font-family:'B612 Mono';-inkscape-font-specification:'B612 Mono';fill:#000000;stroke-width:0.26458332"
+         id="tspan4138"><tspan
+           style="fill:#666666"
+           id="tspan4140">zzsq 98g7 n7ro</tspan><tspan
+           style="fill:#b3b3b3"
+           id="tspan561"> ---- ---- ---- ---- ---- ----</tspan></tspan><tspan
+         sodipodi:role="line"
+         x="43.38969"
+         y="187.967"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:5.64444447px;line-height:0;font-family:Inconsolata;-inkscape-font-specification:Inconsolata;fill:#000000;stroke-width:0.26458332"
+         id="tspan565" /></text>
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:8.02392101px;line-height:1.25;font-family:CozetteVector;-inkscape-font-specification:CozetteVector;letter-spacing:0px;word-spacing:0px;display:inline;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.20059803"
+       x="4.399127"
+       y="115.04139"
+       id="text4603-6"><tspan
+         sodipodi:role="line"
+         x="4.399127"
+         y="115.04139"
+         style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:7.48899364px;font-family:'B612 Mono';-inkscape-font-specification:'B612 Mono Bold';text-align:start;text-anchor:start;fill:#ff6600;stroke-width:0.20059803"
+         id="tspan5041-7">w78qo39h</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:8.02392101px;line-height:1.25;font-family:CozetteVector;-inkscape-font-specification:CozetteVector;letter-spacing:0px;word-spacing:0px;display:inline;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.20059803"
+       x="4.4258738"
+       y="107.28364"
+       id="text5545-5"><tspan
+         sodipodi:role="line"
+         id="tspan5543-3"
+         x="4.4258738"
+         y="107.28364"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:2.67464042px;font-family:'B612 Mono';-inkscape-font-specification:'B612 Mono';fill:#666666;stroke-width:0.20059803">Document</tspan></text>
+    <text
+       id="text717"
+       y="248.2395"
+       x="4.008667"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:10.58333302px;line-height:1.25;font-family:CozetteVector;-inkscape-font-specification:CozetteVector;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.26458332"
+       xml:space="preserve"><tspan
+         id="tspan715"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:4.93888903px;font-family:'B612 Mono';-inkscape-font-specification:'B612 Mono';fill:#ffffff;fill-opacity:1;stroke-width:0.26458332"
+         y="248.2395"
+         x="4.008667"
+         sodipodi:role="line"><tspan
+   style="font-weight:bold"
+   id="tspan741">③</tspan> Codewords</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:10.58333302px;line-height:0.25;font-family:CozetteVector;-inkscape-font-specification:CozetteVector;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.26458332"
+       x="49.529587"
+       y="266.77808"
+       id="text733"><tspan
+         sodipodi:role="line"
+         x="49.529587"
+         y="266.77808"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.52777767px;line-height:0;font-family:'B612 Mono';-inkscape-font-specification:'B612 Mono';fill:#000000;stroke-width:0.26458332"
+         id="tspan765">chair dash possible april simple cabin</tspan><tspan
+         sodipodi:role="line"
+         x="49.529587"
+         y="272.35464"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.52777767px;line-height:0;font-family:'B612 Mono';-inkscape-font-specification:'B612 Mono';fill:#000000;stroke-width:0.26458332"
+         id="tspan731">similar pave swear alien spin elder media</tspan><tspan
+         sodipodi:role="line"
+         x="49.529587"
+         y="277.93121"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.52777767px;line-height:0;font-family:'B612 Mono';-inkscape-font-specification:'B612 Mono';fill:#000000;stroke-width:0.26458332"
+         id="tspan3666">ensure bachelor cage project dress spike</tspan><tspan
+         sodipodi:role="line"
+         x="49.529587"
+         y="283.50781"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.52777767px;line-height:0;font-family:'B612 Mono';-inkscape-font-specification:'B612 Mono';fill:#000000;stroke-width:0.26458332"
+         id="tspan3668">want stereo rural element permit</tspan></text>
+    <text
+       id="text739"
+       y="245.80928"
+       x="144.17233"
+       style="font-style:normal;font-weight:normal;font-size:10.58333302px;line-height:0.1;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.26458332"
+       xml:space="preserve"><tspan
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:2.82222223px;line-height:0px;font-family:'B612 Mono';-inkscape-font-specification:'B612 Mono';text-align:end;letter-spacing:0px;baseline-shift:baseline;text-anchor:end;fill:#ffffff;fill-opacity:1;stroke-width:0.26458332"
+         y="245.80928"
+         x="144.17233"
+         sodipodi:role="line"
+         id="tspan3029">Encrypts the <tspan
+   style="font-weight:bold"
+   id="tspan4459">key shard</tspan> contents. Can optionally be</tspan><tspan
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:2.82222223px;line-height:0px;font-family:'B612 Mono';-inkscape-font-specification:'B612 Mono';text-align:end;letter-spacing:0px;baseline-shift:baseline;text-anchor:end;fill:#ffffff;fill-opacity:1;stroke-width:0.26458332"
+         y="248.62505"
+         x="144.17233"
+         sodipodi:role="line"
+         id="tspan4469">cut off and stored separately from the <tspan
+   style="font-weight:bold"
+   id="tspan4463">key shard</tspan>.</tspan></text>
+    <path
+       style="fill:none;stroke:#2ca02c;stroke-width:0.26499999;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:1.58999992, 1.58999992;stroke-dashoffset:0;stroke-opacity:1;marker-start:url(#marker2188)"
+       d="m 5.3294643,236.52384 144.0089357,0 z"
+       id="path2888"
+       inkscape:connector-curvature="0"
+       sodipodi:nodetypes="ccc" />
+    <text
+       id="text4147"
+       y="271.20026"
+       x="4.1193504"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:8.02392101px;line-height:1.25;font-family:CozetteVector;-inkscape-font-specification:CozetteVector;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.20059803"
+       xml:space="preserve"><tspan
+         id="tspan4145"
+         style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:7.48899364px;font-family:'B612 Mono';-inkscape-font-specification:'B612 Mono Bold';text-align:start;text-anchor:start;fill:#2ca02c;stroke-width:0.20059803"
+         y="271.20026"
+         x="4.1193504"
+         sodipodi:role="line">hxdisc4y</tspan></text>
+    <text
+       id="text4151"
+       y="263.45001"
+       x="4.1460962"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:8.02392101px;line-height:1.25;font-family:CozetteVector;-inkscape-font-specification:CozetteVector;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.20059803"
+       xml:space="preserve"><tspan
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:2.67464042px;font-family:'B612 Mono';-inkscape-font-specification:'B612 Mono';fill:#666666;stroke-width:0.20059803"
+         y="263.45001"
+         x="4.1460962"
+         id="tspan4149"
+         sodipodi:role="line">Shard</tspan></text>
+    <text
+       id="text4155"
+       y="283.31644"
+       x="4.399127"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:8.02392101px;line-height:1.25;font-family:CozetteVector;-inkscape-font-specification:CozetteVector;letter-spacing:0px;word-spacing:0px;display:inline;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.20059803"
+       xml:space="preserve"><tspan
+         id="tspan4153"
+         style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:7.48899364px;font-family:'B612 Mono';-inkscape-font-specification:'B612 Mono Bold';text-align:start;text-anchor:start;fill:#ff6600;stroke-width:0.20059803"
+         y="283.31644"
+         x="4.399127"
+         sodipodi:role="line">w78qo39h</tspan></text>
+    <text
+       id="text4159"
+       y="275.55872"
+       x="4.4258738"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:8.02392101px;line-height:1.25;font-family:CozetteVector;-inkscape-font-specification:CozetteVector;letter-spacing:0px;word-spacing:0px;display:inline;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.20059803"
+       xml:space="preserve"><tspan
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:2.67464042px;font-family:'B612 Mono';-inkscape-font-specification:'B612 Mono';fill:#666666;stroke-width:0.20059803"
+         y="275.55872"
+         x="4.4258738"
+         id="tspan4157"
+         sodipodi:role="line">Document</tspan></text>
+  </g>
+</svg>
