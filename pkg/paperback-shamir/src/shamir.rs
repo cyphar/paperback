@@ -41,7 +41,8 @@ impl Shard {
     /// If two shards have the same identifier, they cannot be used together for
     /// secret recovery.
     pub fn id(&self) -> String {
-        zbase32::encode_full_bytes(&self.x.to_bytes())
+        let id = zbase32::encode_full_bytes(&self.x.to_bytes());
+        format!("h{}", id)
     }
 
     /// Returns the number of *unique* sister `Shard`s required to recover the
@@ -141,7 +142,7 @@ impl Dealer {
     pub fn recover<S: AsRef<[Shard]>>(shards: S) -> Self {
         // TODO: Add -> Result<Self, _>.
         let shards = shards.as_ref();
-        assert!(shards.len() > 0, "must be provided more than one shard");
+        assert!(shards.len() > 0, "must be provided at least one shard");
 
         let threshold = shards[0].threshold;
         let polys_len = shards[0].ys.len();
@@ -187,7 +188,7 @@ impl Dealer {
 pub fn recover_secret<S: AsRef<[Shard]>>(shards: S) -> Vec<u8> {
     // TODO: Add -> Result<Vec<u8>, _>.
     let shards = shards.as_ref();
-    assert!(shards.len() > 0, "must be provided more than one shard");
+    assert!(shards.len() > 0, "must be provided at least one shard");
 
     let threshold = shards[0].threshold;
     let polys_len = shards[0].ys.len();
