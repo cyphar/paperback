@@ -36,6 +36,8 @@ pub struct Shard {
 }
 
 impl Shard {
+    pub const ID_LENGTH: usize = 8;
+
     /// Returns the *unique* identifier for a given `Shard`.
     ///
     /// If two shards have the same identifier, they cannot be used together for
@@ -249,6 +251,8 @@ mod test {
             .map(|_| {
                 let mut shard = dealer.next_shard();
                 shard.threshold -= 1;
+                // Ensure shard IDs are always ID_LENGTH.
+                assert_eq!(shard.id().len(), Shard::ID_LENGTH);
                 shard
             })
             .collect::<Vec<_>>();
@@ -266,7 +270,14 @@ mod test {
         }
 
         let dealer = Dealer::new(n, &secret);
-        let shards = (0..n).map(|_| dealer.next_shard()).collect::<Vec<_>>();
+        let shards = (0..n)
+            .map(|_| {
+                let shard = dealer.next_shard();
+                // Ensure shard IDs are always ID_LENGTH.
+                assert_eq!(shard.id().len(), Shard::ID_LENGTH);
+                shard
+            })
+            .collect::<Vec<_>>();
 
         TestResult::from_bool(recover_secret(shards) == secret)
     }
@@ -280,7 +291,14 @@ mod test {
         }
 
         let dealer = Dealer::new(n, secret);
-        let shards = (0..n).map(|_| dealer.next_shard()).collect::<Vec<_>>();
+        let shards = (0..n)
+            .map(|_| {
+                let shard = dealer.next_shard();
+                // Ensure shard IDs are always ID_LENGTH.
+                assert_eq!(shard.id().len(), Shard::ID_LENGTH);
+                shard
+            })
+            .collect::<Vec<_>>();
         let recovered_dealer = Dealer::recover(shards);
 
         TestResult::from_bool(dealer.polys == recovered_dealer.polys)
