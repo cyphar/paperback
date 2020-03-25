@@ -18,8 +18,14 @@
 
 #![forbid(unsafe_code)]
 
-extern crate itertools;
+extern crate aead;
+extern crate bip39;
+extern crate chacha20poly1305;
+extern crate ed25519_dalek;
+extern crate nom;
 extern crate rand;
+extern crate serde;
+extern crate unsigned_varint;
 extern crate zbase32;
 
 #[cfg(test)]
@@ -28,8 +34,11 @@ extern crate quickcheck;
 #[macro_use]
 extern crate quickcheck_macros;
 
-mod gf;
-mod nom_helpers;
-mod shamir;
+/// Initial version of paperback wire format types.
+///
+/// This module also includes all of the necessary code to serialise and
+/// interact with the relevant structures.
+pub mod v0;
 
-pub use shamir::{recover_secret, Dealer, Shard};
+/// Re-export of the newest paperback wire format types.
+pub use v0 as latest;

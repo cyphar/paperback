@@ -20,15 +20,14 @@ use crate::gf::{GfElem, GfElemPrimitive, GfPolynomial};
 
 use std::mem;
 
-use rand::rngs::OsRng;
-use serde::{Deserialize, Serialize};
+use rand::{rngs::OsRng, RngCore};
+use unsigned_varint::encode;
 
 /// Piece of a secret which has been sharded with [Shamir Secret Sharing][sss].
 ///
 /// [sss]: https://en.wikipedia.org/wiki/Shamir%27s_Secret_Sharing
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Shard {
-    // TODO: Add some kind of versioning, maybe?
     x: GfElem,
     ys: Vec<GfElem>,
     secret_len: usize,
@@ -37,6 +36,19 @@ pub struct Shard {
 
 impl Shard {
     pub const ID_LENGTH: usize = 8;
+
+    /// Create a new random shard.
+    // Internal only -- used by paperback-core tests.
+    // TODO: Can be
+    #[doc(hidden)]
+    pub fn new_rand<R: RngCore + ?Sized>(size: usize, r: &mut R) -> Self {
+        Self {
+            x: GfElem::new_rand(r),
+            ys: (0..size).map(|_| GfElem::new_rand(r)).collect(),
+            secret_len: r.next_u32() as usize,
+            threshold: r.next_u32(),
+        }
+    }
 
     /// Returns the *unique* identifier for a given `Shard`.
     ///
@@ -51,6 +63,83 @@ impl Shard {
     /// stored secret.
     pub fn threshold(&self) -> u32 {
         self.threshold
+    }
+
+    // TODO: Do this with ToWire, but that means we'll need to merge the crates.
+    pub fn to_wire(&self) -> Vec<u8> {
+        let mut bytes = vec![];
+
+        // Encode x-value.
+        encode::u32(self.x.inner(), &mut encode::u32_buffer())
+            .iter()
+            .for_each(|b| bytes.push(*b));
+
+        // Encode y-values (length-prefixed).
+        encode::usize(self.ys.len(), &mut encode::usize_buffer())
+            .iter()
+            .copied()
+            .chain(
+                self.ys
+                    .iter()
+                    .flat_map(|y| encode::u32(y.inner(), &mut encode::u32_buffer()).to_owned()),
+            )
+            .for_each(|b| bytes.push(b));
+
+        // Encode threshold.
+        encode::u32(self.threshold, &mut encode::u32_buffer())
+            .iter()
+            .for_each(|b| bytes.push(*b));
+
+        // Encode secret length.
+        encode::usize(self.secret_len, &mut encode::usize_buffer())
+            .iter()
+            .for_each(|b| bytes.push(*b));
+
+        bytes
+    }
+
+    // TODO: Do this with FromWire, but that means we'll need to merge the crates.
+    pub fn from_wire_partial(input: &[u8]) -> Result<(Self, &[u8]), String> {
+        use crate::nom_helpers;
+        use nom::{combinator::complete, multi::many_m_n, IResult};
+
+        fn parse(input: &[u8]) -> IResult<&[u8], Shard> {
+            let (input, x) = nom_helpers::u32()(input)?;
+            let x = GfElem::from_inner(x);
+
+            let (input, ys_length) = nom_helpers::usize()(input)?;
+            let (input, ys) = many_m_n(ys_length, ys_length, nom_helpers::u32())(input)?;
+            let ys = ys
+                .iter()
+                .copied()
+                .map(GfElem::from_inner)
+                .collect::<Vec<_>>();
+
+            let (input, threshold) = nom_helpers::u32()(input)?;
+            let (input, secret_len) = nom_helpers::usize()(input)?;
+
+            Ok((
+                input,
+                Shard {
+                    x,
+                    ys,
+                    threshold,
+                    secret_len,
+                },
+            ))
+        }
+        let parse = complete(parse);
+
+        let (remain, shard) = parse(input).map_err(|err| format!("{:?}", err))?;
+
+        Ok((shard, remain))
+    }
+}
+
+#[cfg(test)]
+impl quickcheck::Arbitrary for Shard {
+    fn arbitrary<G: quickcheck::Gen>(g: &mut G) -> Self {
+        Self::new_rand(g.size(), g)
     }
 }
 
@@ -235,6 +324,15 @@ mod test {
         }
         let dealer = Dealer::new(n, &secret);
         TestResult::from_bool(secret == dealer.secret())
+    }
+
+    #[quickcheck]
+    fn shard_bytes_roundtrip(shard: Shard) {
+        // TODO: Switch to FromWire::from_wire().
+        let bytes = shard.to_wire();
+        let (shard2, remain) = Shard::from_wire_partial(&bytes).unwrap();
+        assert!(remain.is_empty());
+        assert_eq!(shard, shard2);
     }
 
     #[quickcheck]

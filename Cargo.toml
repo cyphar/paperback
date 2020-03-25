@@ -36,8 +36,10 @@ lto = true
 
 [workspace]
 members = [
+	"pkg/paperback-core",
 	"pkg/paperback-shamir",
 ]
 
 [dependencies]
+"paperback-core" = { path = "pkg/paperback-core" }
 "paperback-shamir" = { path = "pkg/paperback-shamir" }

@@ -17,13 +17,12 @@
  */
 
 use std::{
-    mem,
+    cmp, mem,
     ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign},
 };
 
 use itertools::Itertools;
 use rand::RngCore;
-use serde::{Deserialize, Serialize};
 
 /// Primitive uint type for GfElems.
 pub type GfElemPrimitive = u32;
@@ -36,7 +35,7 @@ pub type GfElemPrimitive = u32;
 /// implementations of `GF(2^n)` fields (and `GF(2^8)` is not suitable for our
 /// purposes).
 // NOTE: PartialEq is not timing-safe.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct GfElem(GfElemPrimitive);
 
 /// (x, y) in GF.
@@ -60,22 +59,35 @@ impl GfElem {
         Self(r.next_u32())
     }
 
-    // TODO: Should probably make the padding rules more explicit.
-    pub fn from_bytes<B: AsRef<[u8]>>(bytes: B) -> Self {
-        let bytes = bytes.as_ref();
-        assert!(bytes.len() <= mem::size_of::<GfElemPrimitive>(), "");
+    pub(crate) fn inner(&self) -> GfElemPrimitive {
+        self.0
+    }
+
+    pub(crate) fn from_inner(v: GfElemPrimitive) -> Self {
+        Self(v)
+    }
+
+    pub fn from_bytes_partial(bytes: &[u8]) -> (Self, &[u8]) {
+        let len = cmp::min(bytes.len(), mem::size_of::<GfElemPrimitive>());
 
         // Pad with zeroes.
         let mut padded = [0u8; mem::size_of::<GfElemPrimitive>()];
-        padded[..bytes.len()].copy_from_slice(bytes);
+        padded[..len].copy_from_slice(bytes);
 
         // Convert to GfElem.
-        GfElem(GfElemPrimitive::from_le_bytes(padded))
+        (
+            GfElem(GfElemPrimitive::from_le_bytes(padded)),
+            &bytes[len..],
+        )
     }
 
-    // TODO: Should probably make the padding rules more explicit.
+    pub fn from_bytes<B: AsRef<[u8]>>(bytes: B) -> Self {
+        let (elem, remain) = Self::from_bytes_partial(bytes.as_ref());
+        assert!(remain.is_empty());
+        elem
+    }
+
     pub fn to_bytes(&self) -> Vec<u8> {
-        // TODO: Deal with padding -- currently dealt with by Dealer.
         self.0.to_le_bytes().to_vec()
     }
 
@@ -102,6 +114,13 @@ impl GfElem {
             //       isn't cheap, even though it is theoretically constant-time.
             _ => Some(self.pow(GfElemPrimitive::max_value() as usize - 1)),
         }
+    }
+}
+
+#[cfg(test)]
+impl quickcheck::Arbitrary for GfElem {
+    fn arbitrary<G: quickcheck::Gen>(g: &mut G) -> Self {
+        Self(g.next_u32())
     }
 }
 
@@ -407,6 +426,17 @@ impl GfPolynomial {
     }
 }
 
+#[cfg(test)]
+impl quickcheck::Arbitrary for GfPolynomial {
+    fn arbitrary<G: quickcheck::Gen>(g: &mut G) -> Self {
+        GfPolynomial(
+            (0..g.size())
+                .map(|_| GfElem::arbitrary(g))
+                .collect::<Vec<_>>(),
+        )
+    }
+}
+
 impl Add for GfPolynomial {
     type Output = Self;
     fn add(mut self, rhs: Self) -> Self::Output {
@@ -433,28 +463,8 @@ impl AddAssign for GfPolynomial {
 mod test {
     use super::*;
 
-    use quickcheck::{Arbitrary, Gen, TestResult};
-    use rand::{rngs::OsRng, Rng};
-
-    // To permit quickcheck to pass GfElems as arguments.
-    impl Arbitrary for GfElem {
-        fn arbitrary<G: Gen>(gen: &mut G) -> Self {
-            let mut k = [GfElemPrimitive::default()];
-            gen.fill(&mut k);
-            Self(k[0])
-        }
-    }
-
-    // To permit quickcheck to pass GfPolynomials as arguments.
-    impl Arbitrary for GfPolynomial {
-        fn arbitrary<G: Gen>(gen: &mut G) -> Self {
-            GfPolynomial(
-                (0..gen.size())
-                    .map(|_| GfElem::arbitrary(gen))
-                    .collect::<Vec<_>>(),
-            )
-        }
-    }
+    use quickcheck::TestResult;
+    use rand::rngs::OsRng;
 
     #[quickcheck]
     fn add_associativity(a: GfElem, b: GfElem) -> bool {
