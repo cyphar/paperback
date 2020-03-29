@@ -29,10 +29,11 @@ edition = "2018"
 
 [dependencies]
 aead = "^0.2"
-multihash = "^0.10"
 chacha20poly1305 = "^0.3"
 digest = "^0.8"
 "ed25519-dalek" = "^1.0.0-pre.3"
+itertools = "^0.8"
+multihash = "^0.10"
 nom = "^5"
 rand = "^0.7"
 serde = { version = "^1", features = ["derive"] }
@@ -40,8 +41,6 @@ serde = { version = "^1", features = ["derive"] }
 typenum = "^1"
 "unsigned-varint" = "^0.3"
 zbase32 = "^0.1"
-
-"paperback-shamir" = { path = "../paperback-shamir" }
 
 [dev-dependencies]
 quickcheck = "0.9"

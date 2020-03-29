@@ -16,11 +16,13 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use crate::v0::{
-    ChaChaPolyKey, ChaChaPolyNonce, KeyShard, KeyShardBuilder, MainDocument, MainDocumentBuilder,
-    MainDocumentMeta, ShardSecret, ToWire,
+use crate::{
+    shamir::Dealer,
+    v0::{
+        ChaChaPolyKey, ChaChaPolyNonce, KeyShard, KeyShardBuilder, MainDocument,
+        MainDocumentBuilder, MainDocumentMeta, ShardSecret, ToWire,
+    },
 };
-use paperback_shamir::Dealer;
 
 use aead::{Aead, NewAead, Payload};
 use chacha20poly1305::ChaCha20Poly1305;

@@ -49,7 +49,7 @@ impl ToWire for MainDocumentMeta {
 #[doc(hidden)]
 impl FromWire for MainDocumentMeta {
     fn from_wire_partial(input: &[u8]) -> Result<(Self, &[u8]), String> {
-        use crate::v0::wire::nom_helpers;
+        use crate::nom_helpers;
         use nom::{combinator::complete, IResult};
 
         fn parse(input: &[u8]) -> IResult<&[u8], MainDocumentMeta> {
@@ -104,7 +104,7 @@ impl ToWire for MainDocumentBuilder {
 #[doc(hidden)]
 impl FromWire for MainDocumentBuilder {
     fn from_wire_partial(input: &[u8]) -> Result<(Self, &[u8]), String> {
-        use crate::v0::wire::nom_helpers;
+        use crate::nom_helpers;
         use nom::{bytes::complete::take, combinator::complete, IResult};
 
         fn parse(input: &[u8]) -> IResult<&[u8], (ChaChaPolyNonce, &[u8])> {

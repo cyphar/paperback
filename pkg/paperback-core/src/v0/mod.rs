@@ -16,8 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use crate::v0::wire::prefixes::*;
-use paperback_shamir::Shard;
+use crate::{shamir::Shard, v0::wire::prefixes::*};
 
 use aead::{generic_array::GenericArray, Aead, NewAead};
 use bip39::{Language, Mnemonic};
@@ -112,7 +111,7 @@ impl quickcheck::Arbitrary for KeyShardBuilder {
         Self {
             version: 0,
             doc_chksum: CHECKSUM_ALGORITHM.digest(&bytes[..]),
-            shard: Shard::new_rand(g.size(), g),
+            shard: Shard::arbitrary(g),
         }
     }
 }

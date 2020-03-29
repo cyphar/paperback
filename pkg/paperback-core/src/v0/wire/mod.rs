@@ -19,7 +19,6 @@
 mod internal;
 mod key_shard;
 mod main_document;
-mod nom_helpers;
 
 pub(crate) mod prefixes {
     /// Prefix for an ed25519 public key.

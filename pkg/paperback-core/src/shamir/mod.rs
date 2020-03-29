@@ -16,20 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#![forbid(unsafe_code)]
-
-extern crate itertools;
-extern crate rand;
-extern crate zbase32;
-
-#[cfg(test)]
-extern crate quickcheck;
-#[cfg(test)]
-#[macro_use]
-extern crate quickcheck_macros;
-
 mod gf;
-mod nom_helpers;
 mod shamir;
 
 pub use shamir::{recover_secret, Dealer, Shard};

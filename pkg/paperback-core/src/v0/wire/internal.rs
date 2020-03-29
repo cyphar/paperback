@@ -57,7 +57,7 @@ impl ToWire for Identity {
 // Internal only -- users can't see Identity.
 impl FromWire for Identity {
     fn from_wire_partial(input: &[u8]) -> Result<(Self, &[u8]), String> {
-        use crate::v0::wire::nom_helpers;
+        use crate::nom_helpers;
         use nom::{bytes::complete::take, combinator::complete, IResult};
 
         fn parse(input: &[u8]) -> IResult<&[u8], (&[u8], &[u8])> {
@@ -115,7 +115,7 @@ impl ToWire for ShardSecret {
 // Internal only -- users can't see ShardSecret.
 impl FromWire for ShardSecret {
     fn from_wire_partial(input: &[u8]) -> Result<(Self, &[u8]), String> {
-        use crate::v0::wire::nom_helpers;
+        use crate::nom_helpers;
         use nom::{
             branch::alt,
             bytes::complete::{tag, take},

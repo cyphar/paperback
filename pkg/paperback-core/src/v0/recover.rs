@@ -16,8 +16,10 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use crate::v0::{FromWire, KeyShard, KeyShardBuilder, MainDocument, ShardSecret};
-use paperback_shamir::Dealer;
+use crate::{
+    shamir::{self, Dealer},
+    v0::{FromWire, KeyShard, KeyShardBuilder, MainDocument, ShardSecret},
+};
 
 use std::{
     collections::HashMap,
@@ -287,7 +289,7 @@ impl Quorum {
             .iter()
             .map(|s| s.inner.shard.clone())
             .collect::<Vec<_>>();
-        let secret = ShardSecret::from_wire(paperback_shamir::recover_secret(shards))?;
+        let secret = ShardSecret::from_wire(shamir::recover_secret(shards))?;
 
         // Double-check that the private key agrees with the quorum's public key
         // choice.

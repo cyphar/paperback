@@ -22,6 +22,7 @@ extern crate aead;
 extern crate bip39;
 extern crate chacha20poly1305;
 extern crate ed25519_dalek;
+extern crate itertools;
 extern crate nom;
 extern crate rand;
 extern crate serde;
@@ -33,6 +34,12 @@ extern crate quickcheck;
 #[cfg(test)]
 #[macro_use]
 extern crate quickcheck_macros;
+
+/// Implementation of Shamir Secret Sharing.
+mod shamir;
+
+/// `nom` helpers which haven't been upstreamed to the relevant projects.
+mod nom_helpers;
 
 /// Initial version of paperback wire format types.
 ///

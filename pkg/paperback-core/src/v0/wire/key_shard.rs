@@ -16,12 +16,14 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use crate::v0::{
-    wire::{prefixes::*, FromWire, ToWire},
-    ChaChaPolyNonce, EncryptedKeyShard, Identity, KeyShard, KeyShardBuilder,
-    CHACHAPOLY_NONCE_LENGTH, CHECKSUM_ALGORITHM,
+use crate::{
+    shamir::Shard,
+    v0::{
+        wire::{prefixes::*, FromWire, ToWire},
+        ChaChaPolyNonce, EncryptedKeyShard, Identity, KeyShard, KeyShardBuilder,
+        CHACHAPOLY_NONCE_LENGTH, CHECKSUM_ALGORITHM,
+    },
 };
-use paperback_shamir::Shard;
 
 use multihash::{Multihash, MultihashDigest};
 use unsigned_varint::encode;
@@ -55,7 +57,7 @@ impl ToWire for KeyShardBuilder {
 #[doc(hidden)]
 impl FromWire for KeyShardBuilder {
     fn from_wire_partial(input: &[u8]) -> Result<(Self, &[u8]), String> {
-        use crate::v0::wire::nom_helpers;
+        use crate::nom_helpers;
         use nom::{combinator::complete, IResult};
 
         fn parse(input: &[u8]) -> IResult<&[u8], (u32, Multihash)> {
@@ -143,7 +145,7 @@ impl ToWire for EncryptedKeyShard {
 
 impl FromWire for EncryptedKeyShard {
     fn from_wire_partial(input: &[u8]) -> Result<(Self, &[u8]), String> {
-        use crate::v0::wire::nom_helpers;
+        use crate::nom_helpers;
         use nom::{bytes::complete::take, combinator::complete, IResult};
 
         fn parse(input: &[u8]) -> IResult<&[u8], (ChaChaPolyNonce, &[u8])> {
