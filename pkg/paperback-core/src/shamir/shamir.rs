@@ -96,19 +96,19 @@ impl FromWire for Shard {
         use nom::{combinator::complete, multi::many_m_n, IResult};
 
         fn parse(input: &[u8]) -> IResult<&[u8], Shard> {
-            let (input, x) = nom_helpers::u32()(input)?;
+            let (input, x) = nom_helpers::u32(input)?;
             let x = GfElem::from_inner(x);
 
-            let (input, ys_length) = nom_helpers::usize()(input)?;
-            let (input, ys) = many_m_n(ys_length, ys_length, nom_helpers::u32())(input)?;
+            let (input, ys_length) = nom_helpers::usize(input)?;
+            let (input, ys) = many_m_n(ys_length, ys_length, nom_helpers::u32)(input)?;
             let ys = ys
                 .iter()
                 .copied()
                 .map(GfElem::from_inner)
                 .collect::<Vec<_>>();
 
-            let (input, threshold) = nom_helpers::u32()(input)?;
-            let (input, secret_len) = nom_helpers::usize()(input)?;
+            let (input, threshold) = nom_helpers::u32(input)?;
+            let (input, secret_len) = nom_helpers::usize(input)?;
 
             Ok((
                 input,

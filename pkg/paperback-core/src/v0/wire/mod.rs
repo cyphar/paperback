@@ -16,6 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+mod helpers;
 mod internal;
 mod key_shard;
 mod main_document;

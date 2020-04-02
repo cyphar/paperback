@@ -18,12 +18,10 @@
 
 use crate::v0::{
     wire::{prefixes::*, FromWire, ToWire},
-    ChaChaPolyKey, Identity, ShardSecret, CHACHAPOLY_KEY_LENGTH,
+    ChaChaPolyKey, Identity, ShardSecret,
 };
 
-use ed25519_dalek::{
-    PublicKey, SecretKey, Signature, PUBLIC_KEY_LENGTH, SECRET_KEY_LENGTH, SIGNATURE_LENGTH,
-};
+use ed25519_dalek::{PublicKey, SecretKey, Signature, SignatureError};
 use unsigned_varint::encode;
 
 // TODO: Completely rewrite this code. This is a very quick-and-dirty
@@ -57,14 +55,20 @@ impl ToWire for Identity {
 // Internal only -- users can't see Identity.
 impl FromWire for Identity {
     fn from_wire_partial(input: &[u8]) -> Result<(Self, &[u8]), String> {
-        use crate::nom_helpers;
-        use nom::{bytes::complete::take, combinator::complete, IResult};
+        use crate::v0::wire::helpers::{take_ed25519_pub, take_ed25519_sig};
+        use nom::{combinator::complete, IResult};
 
-        fn parse(input: &[u8]) -> IResult<&[u8], (&[u8], &[u8])> {
-            let (input, _) = nom_helpers::u32_tag(PREFIX_ED25519_PUB)(input)?;
-            let (input, public_key) = take(PUBLIC_KEY_LENGTH)(input)?;
-            let (input, _) = nom_helpers::u32_tag(PREFIX_ED25519_SIG)(input)?;
-            let (input, signature) = take(SIGNATURE_LENGTH)(input)?;
+        fn parse(
+            input: &[u8],
+        ) -> IResult<
+            &[u8],
+            (
+                Result<PublicKey, SignatureError>,
+                Result<Signature, SignatureError>,
+            ),
+        > {
+            let (input, public_key) = take_ed25519_pub(input)?;
+            let (input, signature) = take_ed25519_sig(input)?;
 
             Ok((input, (public_key, signature)))
         }
@@ -74,10 +78,8 @@ impl FromWire for Identity {
 
         Ok((
             Identity {
-                id_public_key: PublicKey::from_bytes(public_key)
-                    .map_err(|err| format!("{:?}", err))?,
-                id_signature: Signature::from_bytes(signature)
-                    .map_err(|err| format!("{:?}", err))?,
+                id_public_key: public_key.map_err(|err| format!("{:?}", err))?,
+                id_signature: signature.map_err(|err| format!("{:?}", err))?,
             },
             remain,
         ))
@@ -98,7 +100,10 @@ impl ToWire for ShardSecret {
 
         let (prefix, id_private_key) = match &self.id_private_key {
             Some(key) => (PREFIX_ED25519_SECRET, key.as_bytes()),
-            None => (PREFIX_ED25519_SECRET_SEALED, &[0u8; SECRET_KEY_LENGTH]),
+            None => (
+                PREFIX_ED25519_SECRET_SEALED,
+                &[0u8; ed25519_dalek::SECRET_KEY_LENGTH],
+            ),
         };
 
         // Encode ed25519 private key.
@@ -115,46 +120,22 @@ impl ToWire for ShardSecret {
 // Internal only -- users can't see ShardSecret.
 impl FromWire for ShardSecret {
     fn from_wire_partial(input: &[u8]) -> Result<(Self, &[u8]), String> {
-        use crate::nom_helpers;
-        use nom::{
-            branch::alt,
-            bytes::complete::{tag, take},
-            combinator::{complete, map},
-            sequence::tuple,
-            IResult,
-        };
+        use crate::v0::wire::helpers::{take_chachapoly_key, take_ed25519_sec};
+        use nom::{combinator::complete, IResult};
 
-        fn parse(input: &[u8]) -> IResult<&[u8], (ChaChaPolyKey, Option<&[u8]>)> {
-            let (input, _) = nom_helpers::u64_tag(PREFIX_CHACHA20POLY1305_KEY)(input)?;
-            let (input, doc_key) = take(CHACHAPOLY_KEY_LENGTH)(input)?;
+        fn parse(
+            input: &[u8],
+        ) -> IResult<&[u8], (ChaChaPolyKey, Option<Result<SecretKey, SignatureError>>)> {
+            let (input, doc_key) = take_chachapoly_key(input)?;
+            let (input, private_key) = take_ed25519_sec(input)?;
 
-            let doc_key = {
-                let mut key = ChaChaPolyKey::default();
-                key.copy_from_slice(doc_key);
-                key
-            };
-
-            let (input, (_, id_private_key)) = alt((
-                tuple((
-                    // Unsealed document -- fetch the key.
-                    nom_helpers::u64_tag(PREFIX_ED25519_SECRET),
-                    map(take(CHACHAPOLY_KEY_LENGTH), Option::Some),
-                )),
-                tuple((
-                    // Sealed document -- ensure the key is all zeroes.
-                    nom_helpers::u64_tag(PREFIX_ED25519_SECRET_SEALED),
-                    map(tag(&[0u8; CHACHAPOLY_KEY_LENGTH][..]), |_| None),
-                )),
-            ))(input)?;
-
-            Ok((input, (doc_key, id_private_key)))
+            Ok((input, (doc_key, private_key)))
         }
         let parse = complete(parse);
 
-        let (remain, (doc_key, id_private_key)) =
-            parse(input).map_err(|err| format!("{:?}", err))?;
+        let (remain, (doc_key, private_key)) = parse(input).map_err(|err| format!("{:?}", err))?;
 
-        let id_private_key = match id_private_key.map(SecretKey::from_bytes) {
+        let id_private_key = match private_key {
             Some(Ok(key)) => Some(key),
             None => None,
             Some(Err(err)) => return Err(format!("{:?}", err)),

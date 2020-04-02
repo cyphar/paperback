@@ -19,7 +19,6 @@
 use crate::v0::{
     wire::{prefixes::*, FromWire, ToWire},
     ChaChaPolyNonce, Identity, MainDocument, MainDocumentBuilder, MainDocumentMeta,
-    CHACHAPOLY_NONCE_LENGTH,
 };
 
 use unsigned_varint::encode;
@@ -53,8 +52,8 @@ impl FromWire for MainDocumentMeta {
         use nom::{combinator::complete, IResult};
 
         fn parse(input: &[u8]) -> IResult<&[u8], MainDocumentMeta> {
-            let (input, version) = nom_helpers::u32()(input)?;
-            let (input, quorum_size) = nom_helpers::u32()(input)?;
+            let (input, version) = nom_helpers::u32(input)?;
+            let (input, quorum_size) = nom_helpers::u32(input)?;
 
             let meta = MainDocumentMeta {
                 version,
@@ -104,22 +103,12 @@ impl ToWire for MainDocumentBuilder {
 #[doc(hidden)]
 impl FromWire for MainDocumentBuilder {
     fn from_wire_partial(input: &[u8]) -> Result<(Self, &[u8]), String> {
-        use crate::nom_helpers;
-        use nom::{bytes::complete::take, combinator::complete, IResult};
+        use crate::v0::wire::helpers::{take_chachapoly_ciphertext, take_chachapoly_nonce};
+        use nom::{combinator::complete, IResult};
 
         fn parse(input: &[u8]) -> IResult<&[u8], (ChaChaPolyNonce, &[u8])> {
-            let (input, _) = nom_helpers::u64_tag(PREFIX_CHACHA20POLY1305_NONCE)(input)?;
-            let (input, nonce) = take(CHACHAPOLY_NONCE_LENGTH)(input)?;
-
-            let nonce = {
-                let mut buffer = ChaChaPolyNonce::default();
-                buffer.copy_from_slice(nonce);
-                buffer
-            };
-
-            let (input, _) = nom_helpers::u64_tag(PREFIX_CHACHA20POLY1305_CIPHERTEXT)(input)?;
-            let (input, length) = nom_helpers::usize()(input)?;
-            let (input, ciphertext) = take(length)(input)?;
+            let (input, nonce) = take_chachapoly_nonce(input)?;
+            let (input, ciphertext) = take_chachapoly_ciphertext(input)?;
 
             Ok((input, (nonce, ciphertext)))
         }

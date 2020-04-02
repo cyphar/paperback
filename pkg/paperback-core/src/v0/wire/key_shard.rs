@@ -57,12 +57,12 @@ impl ToWire for KeyShardBuilder {
 #[doc(hidden)]
 impl FromWire for KeyShardBuilder {
     fn from_wire_partial(input: &[u8]) -> Result<(Self, &[u8]), String> {
-        use crate::nom_helpers;
+        use crate::{nom_helpers, v0::wire::helpers::multihash};
         use nom::{combinator::complete, IResult};
 
         fn parse(input: &[u8]) -> IResult<&[u8], (u32, Multihash)> {
-            let (input, version) = nom_helpers::u32()(input)?;
-            let (input, doc_chksum) = nom_helpers::multihash()(input)?;
+            let (input, version) = nom_helpers::u32(input)?;
+            let (input, doc_chksum) = multihash(input)?;
 
             Ok((input, (version, doc_chksum.to_owned())))
         }
@@ -145,22 +145,12 @@ impl ToWire for EncryptedKeyShard {
 
 impl FromWire for EncryptedKeyShard {
     fn from_wire_partial(input: &[u8]) -> Result<(Self, &[u8]), String> {
-        use crate::nom_helpers;
-        use nom::{bytes::complete::take, combinator::complete, IResult};
+        use crate::v0::wire::helpers::{take_chachapoly_ciphertext, take_chachapoly_nonce};
+        use nom::{combinator::complete, IResult};
 
         fn parse(input: &[u8]) -> IResult<&[u8], (ChaChaPolyNonce, &[u8])> {
-            let (input, _) = nom_helpers::u64_tag(PREFIX_CHACHA20POLY1305_NONCE)(input)?;
-            let (input, nonce) = take(CHACHAPOLY_NONCE_LENGTH)(input)?;
-
-            let nonce = {
-                let mut buffer = ChaChaPolyNonce::default();
-                buffer.copy_from_slice(nonce);
-                buffer
-            };
-
-            let (input, _) = nom_helpers::u64_tag(PREFIX_CHACHA20POLY1305_CIPHERTEXT)(input)?;
-            let (input, length) = nom_helpers::usize()(input)?;
-            let (input, ciphertext) = take(length)(input)?;
+            let (input, nonce) = take_chachapoly_nonce(input)?;
+            let (input, ciphertext) = take_chachapoly_ciphertext(input)?;
 
             Ok((input, (nonce, ciphertext)))
         }
