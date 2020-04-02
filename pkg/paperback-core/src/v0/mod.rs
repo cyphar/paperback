@@ -385,5 +385,12 @@ mod test {
         TestResult::from_bool(recovered_secret == secret)
     }
 
+    #[quickcheck]
+    fn key_shard_encryption_roundtrip(shard: KeyShard) {
+        let (enc_shard, codewords) = shard.clone().encrypt().unwrap();
+        let shard2 = enc_shard.decrypt(&codewords).unwrap();
+        assert_eq!(shard, shard2);
+    }
+
     // TODO: Add many more tests...
 }
