@@ -25,24 +25,24 @@ use crate::{
     },
 };
 
-use multihash::{Multihash, MultihashDigest};
-use unsigned_varint::encode;
+use multihash::Multihash;
+use unsigned_varint::{encode as varuint_encode, nom as varuint_nom};
 
 // Internal only -- users can't see KeyShardBuilder.
 #[doc(hidden)]
 impl ToWire for KeyShardBuilder {
     fn to_wire(&self) -> Vec<u8> {
-        let mut buffer = encode::u32_buffer();
+        let mut buffer = varuint_encode::u32_buffer();
         let mut bytes = vec![];
 
         // Encode version.
-        encode::u32(self.version, &mut buffer)
+        varuint_encode::u32(self.version, &mut buffer)
             .iter()
             .for_each(|b| bytes.push(*b));
 
         // Encode multihash checksum.
         self.doc_chksum
-            .as_bytes()
+            .to_bytes()
             .iter()
             .for_each(|b| bytes.push(*b));
 
@@ -57,16 +57,16 @@ impl ToWire for KeyShardBuilder {
 #[doc(hidden)]
 impl FromWire for KeyShardBuilder {
     fn from_wire_partial(input: &[u8]) -> Result<(Self, &[u8]), String> {
-        use crate::{nom_helpers, v0::wire::helpers::multihash};
+        use crate::v0::wire::helpers::multihash;
         use nom::{combinator::complete, IResult};
 
         fn parse(input: &[u8]) -> IResult<&[u8], (u32, Multihash)> {
-            let (input, version) = nom_helpers::u32(input)?;
+            let (input, version) = varuint_nom::u32(input)?;
             let (input, doc_chksum) = multihash(input)?;
 
             Ok((input, (version, doc_chksum.to_owned())))
         }
-        let parse = complete(parse);
+        let mut parse = complete(parse);
 
         let (input, (version, doc_chksum)) = parse(input).map_err(|err| format!("{:?}", err))?;
         let (shard, remain) = Shard::from_wire_partial(input)?;
@@ -102,7 +102,7 @@ impl FromWire for KeyShard {
         let (inner, input) = KeyShardBuilder::from_wire_partial(input)?;
         let (identity, input) = Identity::from_wire_partial(input)?;
 
-        if inner.doc_chksum.algorithm() != CHECKSUM_ALGORITHM.code() {
+        if inner.doc_chksum.code() != CHECKSUM_ALGORITHM.into() {
             return Err(format!("document checksum must be Blake2b-256",));
         }
 
@@ -119,22 +119,22 @@ impl FromWire for KeyShard {
 
 impl ToWire for EncryptedKeyShard {
     fn to_wire(&self) -> Vec<u8> {
-        let mut buffer = encode::u64_buffer();
+        let mut buffer = varuint_encode::u64_buffer();
         let mut bytes = vec![];
 
         // Encode ChaCha20-Poly1305 nonce.
-        encode::u64(PREFIX_CHACHA20POLY1305_NONCE, &mut buffer)
+        varuint_encode::u64(PREFIX_CHACHA20POLY1305_NONCE, &mut buffer)
             .iter()
             .chain(&self.nonce)
             .for_each(|b| bytes.push(*b));
         assert_eq!(self.nonce.len(), CHACHAPOLY_NONCE_LENGTH);
 
         // Encode ChaCha20-Poly1305 ciphertext (length-prefixed).
-        encode::u64(PREFIX_CHACHA20POLY1305_CIPHERTEXT, &mut buffer)
+        varuint_encode::u64(PREFIX_CHACHA20POLY1305_CIPHERTEXT, &mut buffer)
             .iter()
-            .chain(encode::usize(
+            .chain(varuint_encode::usize(
                 self.ciphertext.len(),
-                &mut encode::usize_buffer(),
+                &mut varuint_encode::usize_buffer(),
             ))
             .chain(&self.ciphertext)
             .for_each(|b| bytes.push(*b));
@@ -154,7 +154,7 @@ impl FromWire for EncryptedKeyShard {
 
             Ok((input, (nonce, ciphertext)))
         }
-        let parse = complete(parse);
+        let mut parse = complete(parse);
 
         let (remain, (nonce, ciphertext)) = parse(input).map_err(|err| format!("{:?}", err))?;
 

@@ -68,7 +68,7 @@ impl Backup {
         };
 
         // Encrypt the contents.
-        let aead = ChaCha20Poly1305::new(doc_key);
+        let aead = ChaCha20Poly1305::new(&doc_key);
         let payload = Payload {
             msg: secret,
             aad: &main_document_meta.aad(&id_keypair.public),

@@ -28,20 +28,24 @@ categories = ["cryptography"]
 edition = "2018"
 
 [dependencies]
-aead = "^0.2"
-chacha20poly1305 = "^0.3"
-digest = "^0.8"
-"ed25519-dalek" = "^1.0.0-pre.3"
-itertools = "^0.8"
-multihash = "^0.10"
-nom = "^5"
-rand = "^0.7"
+aead = "^0.4"
+chacha20poly1305 = "^0.8"
+digest = "^0.9"
+ed25519-dalek = "^1.0.1"
+itertools = "^0.10"
+multihash = "^0.13"
+nom = "^6" # This must match the unsigned-varint version.
+rand = "^0.7" # This must match the ed25519-dalek version.
 serde = { version = "^1", features = ["derive"] }
-"tiny-bip39" = "^0.7"
+signature = "^1"
+tiny-bip39 = "^0.8"
 typenum = "^1"
-"unsigned-varint" = "^0.3"
+unsigned-varint = { version = "^0.7", features = ["nom"] }
 zbase32 = "^0.1"
 
 [dev-dependencies]
-quickcheck = "0.9"
-quickcheck_macros = "0.9"
+quickcheck = "^0.9"
+quickcheck_macros = "^0.9"
+
+[patch.crates-io]
+unsigned-varint = { git = "https://github.com/cyphar/unsigned-varint", branch = "nom6-errors" }

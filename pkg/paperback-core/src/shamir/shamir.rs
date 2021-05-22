@@ -24,7 +24,7 @@ use crate::{
 use std::mem;
 
 use rand::rngs::OsRng;
-use unsigned_varint::encode;
+use unsigned_varint::{encode as varuint_encode, nom as varuint_nom};
 
 /// Piece of a secret which has been sharded with [Shamir Secret Sharing][sss].
 ///
@@ -61,28 +61,26 @@ impl ToWire for Shard {
         let mut bytes = vec![];
 
         // Encode x-value.
-        encode::u32(self.x.inner(), &mut encode::u32_buffer())
+        varuint_encode::u32(self.x.inner(), &mut varuint_encode::u32_buffer())
             .iter()
             .for_each(|b| bytes.push(*b));
 
         // Encode y-values (length-prefixed).
-        encode::usize(self.ys.len(), &mut encode::usize_buffer())
+        varuint_encode::usize(self.ys.len(), &mut varuint_encode::usize_buffer())
             .iter()
             .copied()
-            .chain(
-                self.ys
-                    .iter()
-                    .flat_map(|y| encode::u32(y.inner(), &mut encode::u32_buffer()).to_owned()),
-            )
+            .chain(self.ys.iter().flat_map(|y| {
+                varuint_encode::u32(y.inner(), &mut varuint_encode::u32_buffer()).to_owned()
+            }))
             .for_each(|b| bytes.push(b));
 
         // Encode threshold.
-        encode::u32(self.threshold, &mut encode::u32_buffer())
+        varuint_encode::u32(self.threshold, &mut varuint_encode::u32_buffer())
             .iter()
             .for_each(|b| bytes.push(*b));
 
         // Encode secret length.
-        encode::usize(self.secret_len, &mut encode::usize_buffer())
+        varuint_encode::usize(self.secret_len, &mut varuint_encode::usize_buffer())
             .iter()
             .for_each(|b| bytes.push(*b));
 
@@ -92,23 +90,22 @@ impl ToWire for Shard {
 
 impl FromWire for Shard {
     fn from_wire_partial(input: &[u8]) -> Result<(Self, &[u8]), String> {
-        use crate::nom_helpers;
         use nom::{combinator::complete, multi::many_m_n, IResult};
 
         fn parse(input: &[u8]) -> IResult<&[u8], Shard> {
-            let (input, x) = nom_helpers::u32(input)?;
+            let (input, x) = varuint_nom::u32(input)?;
             let x = GfElem::from_inner(x);
 
-            let (input, ys_length) = nom_helpers::usize(input)?;
-            let (input, ys) = many_m_n(ys_length, ys_length, nom_helpers::u32)(input)?;
+            let (input, ys_length) = varuint_nom::usize(input)?;
+            let (input, ys) = many_m_n(ys_length, ys_length, varuint_nom::u32)(input)?;
             let ys = ys
                 .iter()
                 .copied()
                 .map(GfElem::from_inner)
                 .collect::<Vec<_>>();
 
-            let (input, threshold) = nom_helpers::u32(input)?;
-            let (input, secret_len) = nom_helpers::usize(input)?;
+            let (input, threshold) = varuint_nom::u32(input)?;
+            let (input, secret_len) = varuint_nom::usize(input)?;
 
             Ok((
                 input,
@@ -120,7 +117,7 @@ impl FromWire for Shard {
                 },
             ))
         }
-        let parse = complete(parse);
+        let mut parse = complete(parse);
 
         let (remain, shard) = parse(input).map_err(|err| format!("{:?}", err))?;
 

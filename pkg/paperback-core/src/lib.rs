@@ -38,9 +38,6 @@ extern crate quickcheck_macros;
 /// Implementation of Shamir Secret Sharing.
 mod shamir;
 
-/// `nom` helpers which haven't been upstreamed to the relevant projects.
-mod nom_helpers;
-
 /// Initial version of paperback wire format types.
 ///
 /// This module also includes all of the necessary code to serialise and

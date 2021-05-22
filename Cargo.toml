@@ -41,3 +41,6 @@ members = [
 
 [dependencies]
 "paperback-core" = { path = "pkg/paperback-core" }
+
+[patch.crates-io]
+unsigned-varint = { git = "https://github.com/cyphar/unsigned-varint", branch = "nom6-errors" }

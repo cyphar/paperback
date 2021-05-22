@@ -300,7 +300,7 @@ impl Quorum {
         }
 
         // Decrypt the contents.
-        let aead = ChaCha20Poly1305::new(secret.doc_key);
+        let aead = ChaCha20Poly1305::new(&secret.doc_key);
         let payload = Payload {
             msg: &self.main_document.inner.ciphertext,
             aad: &self.main_document.inner.meta.aad(&self.id_public_key),

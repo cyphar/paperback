@@ -21,22 +21,22 @@ use crate::v0::{
     ChaChaPolyNonce, Identity, MainDocument, MainDocumentBuilder, MainDocumentMeta,
 };
 
-use unsigned_varint::encode;
+use unsigned_varint::{encode as varuint_encode, nom as varuint_nom};
 
 // Internal only -- users can't see MainDocumentMeta.
 #[doc(hidden)]
 impl ToWire for MainDocumentMeta {
     fn to_wire(&self) -> Vec<u8> {
-        let mut buffer = encode::u32_buffer();
+        let mut buffer = varuint_encode::u32_buffer();
         let mut bytes = vec![];
 
         // Encode version.
-        encode::u32(self.version, &mut buffer)
+        varuint_encode::u32(self.version, &mut buffer)
             .iter()
             .for_each(|b| bytes.push(*b));
 
         // Encode quorum size.
-        encode::u32(self.quorum_size, &mut buffer)
+        varuint_encode::u32(self.quorum_size, &mut buffer)
             .iter()
             .for_each(|b| bytes.push(*b));
 
@@ -48,12 +48,11 @@ impl ToWire for MainDocumentMeta {
 #[doc(hidden)]
 impl FromWire for MainDocumentMeta {
     fn from_wire_partial(input: &[u8]) -> Result<(Self, &[u8]), String> {
-        use crate::nom_helpers;
         use nom::{combinator::complete, IResult};
 
         fn parse(input: &[u8]) -> IResult<&[u8], MainDocumentMeta> {
-            let (input, version) = nom_helpers::u32(input)?;
-            let (input, quorum_size) = nom_helpers::u32(input)?;
+            let (input, version) = varuint_nom::u32(input)?;
+            let (input, quorum_size) = varuint_nom::u32(input)?;
 
             let meta = MainDocumentMeta {
                 version,
@@ -62,7 +61,7 @@ impl FromWire for MainDocumentMeta {
 
             Ok((input, meta))
         }
-        let parse = complete(parse);
+        let mut parse = complete(parse);
 
         let (remain, meta) = parse(input).map_err(|err| format!("{:?}", err))?;
         Ok((meta, remain))
@@ -73,24 +72,24 @@ impl FromWire for MainDocumentMeta {
 #[doc(hidden)]
 impl ToWire for MainDocumentBuilder {
     fn to_wire(&self) -> Vec<u8> {
-        let mut buffer = encode::u64_buffer();
+        let mut buffer = varuint_encode::u64_buffer();
         let mut bytes = vec![];
 
         // Encode metadata.
         bytes.append(&mut self.meta.to_wire());
 
         // Encode nonce.
-        encode::u64(PREFIX_CHACHA20POLY1305_NONCE, &mut buffer)
+        varuint_encode::u64(PREFIX_CHACHA20POLY1305_NONCE, &mut buffer)
             .iter()
             .chain(&self.nonce)
             .for_each(|b| bytes.push(*b));
 
         // Encode ciphertext.
-        encode::u64(PREFIX_CHACHA20POLY1305_CIPHERTEXT, &mut buffer)
+        varuint_encode::u64(PREFIX_CHACHA20POLY1305_CIPHERTEXT, &mut buffer)
             .iter()
-            .chain(encode::usize(
+            .chain(varuint_encode::usize(
                 self.ciphertext.len(),
-                &mut encode::usize_buffer(),
+                &mut varuint_encode::usize_buffer(),
             ))
             .chain(&self.ciphertext)
             .for_each(|b| bytes.push(*b));
@@ -112,7 +111,7 @@ impl FromWire for MainDocumentBuilder {
 
             Ok((input, (nonce, ciphertext)))
         }
-        let parse = complete(parse);
+        let mut parse = complete(parse);
 
         let (meta, input) = MainDocumentMeta::from_wire_partial(input)?;
         let (remain, (nonce, ciphertext)) = parse(input).map_err(|err| format!("{:?}", err))?;

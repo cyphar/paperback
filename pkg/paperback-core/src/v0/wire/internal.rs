@@ -22,7 +22,7 @@ use crate::v0::{
 };
 
 use ed25519_dalek::{PublicKey, SecretKey, Signature, SignatureError};
-use unsigned_varint::encode;
+use unsigned_varint::encode as varuint_encode;
 
 // TODO: Completely rewrite this code. This is a very quick-and-dirty
 //       implementation of the main serialisation code, but we'll need to
@@ -33,17 +33,17 @@ use unsigned_varint::encode;
 // Internal only -- users can't see Identity.
 impl ToWire for Identity {
     fn to_wire(&self) -> Vec<u8> {
-        let mut buffer = encode::u32_buffer();
+        let mut buffer = varuint_encode::u32_buffer();
         let mut bytes = vec![];
 
         // Encode ed25519 public key (with multicodec prefix).
-        encode::u32(PREFIX_ED25519_PUB, &mut buffer)
+        varuint_encode::u32(PREFIX_ED25519_PUB, &mut buffer)
             .iter()
             .chain(self.id_public_key.as_bytes())
             .for_each(|b| bytes.push(*b));
 
         // Encode ed25519 signature (with multicodec prefix).
-        encode::u32(PREFIX_ED25519_SIG, &mut buffer)
+        varuint_encode::u32(PREFIX_ED25519_SIG, &mut buffer)
             .iter()
             .chain(&self.id_signature.to_bytes()[..])
             .for_each(|b| bytes.push(*b));
@@ -72,7 +72,7 @@ impl FromWire for Identity {
 
             Ok((input, (public_key, signature)))
         }
-        let parse = complete(parse);
+        let mut parse = complete(parse);
 
         let (remain, (public_key, signature)) = parse(input).map_err(|err| format!("{:?}", err))?;
 
@@ -89,11 +89,11 @@ impl FromWire for Identity {
 // Internal only -- users can't see ShardSecret.
 impl ToWire for ShardSecret {
     fn to_wire(&self) -> Vec<u8> {
-        let mut buffer = encode::u64_buffer();
+        let mut buffer = varuint_encode::u64_buffer();
         let mut bytes = vec![];
 
         // Encode ChaCha20-Poly1305 key.
-        encode::u64(PREFIX_CHACHA20POLY1305_KEY, &mut buffer)
+        varuint_encode::u64(PREFIX_CHACHA20POLY1305_KEY, &mut buffer)
             .iter()
             .chain(&self.doc_key)
             .for_each(|b| bytes.push(*b));
@@ -108,7 +108,7 @@ impl ToWire for ShardSecret {
 
         // Encode ed25519 private key.
         // NOTE: Not actually upstream.
-        encode::u64(prefix, &mut buffer)
+        varuint_encode::u64(prefix, &mut buffer)
             .iter()
             .chain(&id_private_key[..])
             .for_each(|b| bytes.push(*b));
@@ -131,7 +131,7 @@ impl FromWire for ShardSecret {
 
             Ok((input, (doc_key, private_key)))
         }
-        let parse = complete(parse);
+        let mut parse = complete(parse);
 
         let (remain, (doc_key, private_key)) = parse(input).map_err(|err| format!("{:?}", err))?;
 
@@ -155,7 +155,7 @@ impl FromWire for ShardSecret {
 mod test {
     use super::*;
 
-    use ed25519_dalek::Keypair;
+    use ed25519_dalek::{Keypair, Signer};
     use rand::{rngs::OsRng, RngCore};
 
     // TODO: Get rid of this ugliness.

@@ -18,13 +18,13 @@
 
 use crate::{shamir::Shard, v0::wire::prefixes::*};
 
-use aead::{generic_array::GenericArray, Aead, NewAead};
+use aead::{generic_array::GenericArray, Aead, AeadCore, NewAead};
 use bip39::{Language, Mnemonic};
 use chacha20poly1305::ChaCha20Poly1305;
-use ed25519_dalek::{Keypair, PublicKey, Signature};
-use multihash::{Blake2b256, Multihash, MultihashDigest};
+use ed25519_dalek::{Keypair, PublicKey, Signature, Signer};
+use multihash::{Code, Multihash, MultihashDigest};
 use rand::{rngs::OsRng, RngCore};
-use unsigned_varint::encode;
+use unsigned_varint::encode as varuint_encode;
 
 pub type ShardId = String;
 pub type DocumentId = String;
@@ -32,7 +32,7 @@ pub type DocumentId = String;
 type ChaChaPolyKey = GenericArray<u8, <ChaCha20Poly1305 as NewAead>::KeySize>;
 const CHACHAPOLY_KEY_LENGTH: usize = 32usize;
 
-type ChaChaPolyNonce = GenericArray<u8, <ChaCha20Poly1305 as Aead>::NonceSize>;
+type ChaChaPolyNonce = GenericArray<u8, <ChaCha20Poly1305 as AeadCore>::NonceSize>;
 const CHACHAPOLY_NONCE_LENGTH: usize = 12usize;
 
 #[cfg(test)]
@@ -44,7 +44,7 @@ fn check_length_consts() {
     assert_eq!(CHACHAPOLY_NONCE_LENGTH, ChaChaPolyNonce::default().len());
 }
 
-const CHECKSUM_ALGORITHM: Blake2b256 = Blake2b256;
+const CHECKSUM_ALGORITHM: Code = Code::Blake2b256;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 struct Identity {
@@ -85,7 +85,7 @@ impl KeyShardBuilder {
         let mut bytes = self.to_wire();
 
         // Append the Ed25519 public key used for signing.
-        encode::u32(PREFIX_ED25519_PUB, &mut encode::u32_buffer())
+        varuint_encode::u32(PREFIX_ED25519_PUB, &mut varuint_encode::u32_buffer())
             .iter()
             .chain(id_public_key.as_bytes())
             .for_each(|b| bytes.push(*b));
@@ -152,7 +152,7 @@ impl KeyShard {
         OsRng.fill_bytes(&mut shard_nonce);
 
         // Encrypt the contents.
-        let aead = ChaCha20Poly1305::new(shard_key);
+        let aead = ChaCha20Poly1305::new(&shard_key);
         let wire_shard = aead
             .encrypt(&shard_nonce, wire_shard.as_slice())
             .map_err(|err| format!("{:?}", err))?; // XXX: Ugly, fix this.
@@ -198,7 +198,7 @@ impl EncryptedKeyShard {
         shard_key.copy_from_slice(mnemonic.entropy());
 
         // Decrypt the contents.
-        let aead = ChaCha20Poly1305::new(shard_key);
+        let aead = ChaCha20Poly1305::new(&shard_key);
         let wire_shard = aead
             .decrypt(&self.nonce, self.ciphertext.as_slice())
             .map_err(|err| format!("{:?}", err))?; // XXX: Ugly, fix this.
@@ -259,7 +259,7 @@ impl MainDocumentBuilder {
         let mut bytes = self.to_wire();
 
         // Append the Ed25519 public key used for signing.
-        encode::u32(PREFIX_ED25519_PUB, &mut encode::u32_buffer())
+        varuint_encode::u32(PREFIX_ED25519_PUB, &mut varuint_encode::u32_buffer())
             .iter()
             .chain(id_public_key.as_bytes())
             .for_each(|b| bytes.push(*b));
@@ -306,8 +306,8 @@ impl MainDocument {
     }
 
     pub fn id(&self) -> DocumentId {
-        let doc_chksum = self.checksum();
-        let encoded_chksum = zbase32::encode_full_bytes(doc_chksum.as_bytes());
+        let doc_chksum = self.checksum().to_bytes();
+        let encoded_chksum = zbase32::encode_full_bytes(&doc_chksum);
         // The *suffix* is the ID.
         let short_id = &encoded_chksum[encoded_chksum.len() - Self::ID_LENGTH..];
 
