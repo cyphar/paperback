@@ -52,21 +52,18 @@ impl ToWire for Identity {
     }
 }
 
+type IdentityParseResult = (
+    Result<PublicKey, SignatureError>,
+    Result<Signature, SignatureError>,
+);
+
 // Internal only -- users can't see Identity.
 impl FromWire for Identity {
     fn from_wire_partial(input: &[u8]) -> Result<(Self, &[u8]), String> {
         use crate::v0::wire::helpers::{take_ed25519_pub, take_ed25519_sig};
         use nom::{combinator::complete, IResult};
 
-        fn parse(
-            input: &[u8],
-        ) -> IResult<
-            &[u8],
-            (
-                Result<PublicKey, SignatureError>,
-                Result<Signature, SignatureError>,
-            ),
-        > {
+        fn parse(input: &[u8]) -> IResult<&[u8], IdentityParseResult> {
             let (input, public_key) = take_ed25519_pub(input)?;
             let (input, signature) = take_ed25519_sig(input)?;
 
@@ -117,15 +114,15 @@ impl ToWire for ShardSecret {
     }
 }
 
+type ShardSecretParseResult = (ChaChaPolyKey, Option<Result<SecretKey, SignatureError>>);
+
 // Internal only -- users can't see ShardSecret.
 impl FromWire for ShardSecret {
     fn from_wire_partial(input: &[u8]) -> Result<(Self, &[u8]), String> {
         use crate::v0::wire::helpers::{take_chachapoly_key, take_ed25519_sec};
         use nom::{combinator::complete, IResult};
 
-        fn parse(
-            input: &[u8],
-        ) -> IResult<&[u8], (ChaChaPolyKey, Option<Result<SecretKey, SignatureError>>)> {
+        fn parse(input: &[u8]) -> IResult<&[u8], ShardSecretParseResult> {
             let (input, doc_key) = take_chachapoly_key(input)?;
             let (input, private_key) = take_ed25519_sec(input)?;
 
@@ -143,8 +140,8 @@ impl FromWire for ShardSecret {
 
         Ok((
             ShardSecret {
-                doc_key: doc_key,
-                id_private_key: id_private_key,
+                doc_key,
+                id_private_key,
             },
             remain,
         ))

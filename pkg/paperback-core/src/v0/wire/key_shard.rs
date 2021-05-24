@@ -103,7 +103,7 @@ impl FromWire for KeyShard {
         let (identity, input) = Identity::from_wire_partial(input)?;
 
         if inner.doc_chksum.code() != CHECKSUM_ALGORITHM.into() {
-            return Err(format!("document checksum must be Blake2b-256",));
+            return Err("document checksum must be Blake2b-256".to_string());
         }
 
         if inner.version != 0 {

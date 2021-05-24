@@ -134,6 +134,8 @@ impl Add for GfElem {
 
 impl AddAssign for GfElem {
     fn add_assign(&mut self, rhs: Self) {
+        // Addition in GF(2^n) is actually XOR.
+        #![allow(clippy::suspicious_op_assign_impl)]
         self.0 ^= rhs.0
     }
 }
@@ -149,6 +151,7 @@ impl Sub for GfElem {
 impl SubAssign for GfElem {
     fn sub_assign(&mut self, rhs: Self) {
         // Subtraction in GF(2^n) is identical to addition.
+        #![allow(clippy::suspicious_op_assign_impl)]
         *self += rhs
     }
 }
@@ -192,6 +195,9 @@ impl Div for GfElem {
 
 impl DivAssign for GfElem {
     fn div_assign(&mut self, rhs: Self) {
+        // In order to divide, we need to compute the inverse and multiply (like
+        // we would with regular arthimetic in R).
+        #![allow(clippy::suspicious_op_assign_impl)]
         *self *= rhs.inverse().expect("rhs cannot be inverted")
     }
 }

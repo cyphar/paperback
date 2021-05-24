@@ -16,125 +16,12 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use crate::{
-    shamir::gf::{GfElem, GfElemPrimitive, GfPolynomial},
-    v0::{FromWire, ToWire},
+use crate::shamir::{
+    gf::{GfElem, GfElemPrimitive, GfPolynomial},
+    shard::Shard,
 };
 
 use std::mem;
-
-use unsigned_varint::{encode as varuint_encode, nom as varuint_nom};
-
-/// Piece of a secret which has been sharded with [Shamir Secret Sharing][sss].
-///
-/// [sss]: https://en.wikipedia.org/wiki/Shamir%27s_Secret_Sharing
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Shard {
-    x: GfElem,
-    ys: Vec<GfElem>,
-    secret_len: usize,
-    threshold: GfElemPrimitive,
-}
-
-impl Shard {
-    pub const ID_LENGTH: usize = 8;
-
-    /// Returns the *unique* identifier for a given `Shard`.
-    ///
-    /// If two shards have the same identifier, they cannot be used together for
-    /// secret recovery.
-    pub fn id(&self) -> String {
-        let id = zbase32::encode_full_bytes(&self.x.to_bytes());
-        format!("h{}", id)
-    }
-
-    /// Returns the number of *unique* sister `Shard`s required to recover the
-    /// stored secret.
-    pub fn threshold(&self) -> u32 {
-        self.threshold
-    }
-}
-
-impl ToWire for Shard {
-    fn to_wire(&self) -> Vec<u8> {
-        let mut bytes = vec![];
-
-        // Encode x-value.
-        varuint_encode::u32(self.x.inner(), &mut varuint_encode::u32_buffer())
-            .iter()
-            .for_each(|b| bytes.push(*b));
-
-        // Encode y-values (length-prefixed).
-        varuint_encode::usize(self.ys.len(), &mut varuint_encode::usize_buffer())
-            .iter()
-            .copied()
-            .chain(self.ys.iter().flat_map(|y| {
-                varuint_encode::u32(y.inner(), &mut varuint_encode::u32_buffer()).to_owned()
-            }))
-            .for_each(|b| bytes.push(b));
-
-        // Encode threshold.
-        varuint_encode::u32(self.threshold, &mut varuint_encode::u32_buffer())
-            .iter()
-            .for_each(|b| bytes.push(*b));
-
-        // Encode secret length.
-        varuint_encode::usize(self.secret_len, &mut varuint_encode::usize_buffer())
-            .iter()
-            .for_each(|b| bytes.push(*b));
-
-        bytes
-    }
-}
-
-impl FromWire for Shard {
-    fn from_wire_partial(input: &[u8]) -> Result<(Self, &[u8]), String> {
-        use nom::{combinator::complete, multi::many_m_n, IResult};
-
-        fn parse(input: &[u8]) -> IResult<&[u8], Shard> {
-            let (input, x) = varuint_nom::u32(input)?;
-            let x = GfElem::from_inner(x);
-
-            let (input, ys_length) = varuint_nom::usize(input)?;
-            let (input, ys) = many_m_n(ys_length, ys_length, varuint_nom::u32)(input)?;
-            let ys = ys
-                .iter()
-                .copied()
-                .map(GfElem::from_inner)
-                .collect::<Vec<_>>();
-
-            let (input, threshold) = varuint_nom::u32(input)?;
-            let (input, secret_len) = varuint_nom::usize(input)?;
-
-            Ok((
-                input,
-                Shard {
-                    x,
-                    ys,
-                    threshold,
-                    secret_len,
-                },
-            ))
-        }
-        let mut parse = complete(parse);
-
-        let (remain, shard) = parse(input).map_err(|err| format!("{:?}", err))?;
-
-        Ok((shard, remain))
-    }
-}
-
-#[cfg(test)]
-impl quickcheck::Arbitrary for Shard {
-    fn arbitrary(g: &mut quickcheck::Gen) -> Self {
-        Self {
-            x: GfElem::arbitrary(g),
-            ys: (0..g.size()).map(|_| GfElem::arbitrary(g)).collect(),
-            secret_len: usize::arbitrary(g),
-            threshold: u32::arbitrary(g),
-        }
-    }
-}
 
 /// Factory to share a secret using [Shamir Secret Sharing][sss].
 ///
@@ -227,15 +114,15 @@ impl Dealer {
     pub fn recover<S: AsRef<[Shard]>>(shards: S) -> Self {
         // TODO: Add -> Result<Self, _>.
         let shards = shards.as_ref();
-        assert!(shards.len() > 0, "must be provided at least one shard");
+        assert!(!shards.is_empty(), "must be provided at least one shard");
 
-        let threshold = shards[0].threshold;
+        let threshold = shards[0].threshold();
         let polys_len = shards[0].ys.len();
         let secret_len = shards[0].secret_len;
 
         // TODO: Implement this consistency checking more nicely.
         for shard in shards {
-            assert!(shard.threshold == threshold, "shards must be consistent");
+            assert!(shard.threshold() == threshold, "shards must be consistent");
             assert!(shard.ys.len() == polys_len, "shards must be consistent");
             assert!(shard.secret_len == secret_len, "shards must be consistent");
         }
@@ -258,8 +145,8 @@ impl Dealer {
 
         Self {
             polys,
-            threshold,
             secret_len,
+            threshold,
         }
     }
 }
@@ -273,15 +160,15 @@ impl Dealer {
 pub fn recover_secret<S: AsRef<[Shard]>>(shards: S) -> Vec<u8> {
     // TODO: Add -> Result<Vec<u8>, _>.
     let shards = shards.as_ref();
-    assert!(shards.len() > 0, "must be provided at least one shard");
+    assert!(!shards.is_empty(), "must be provided at least one shard");
 
-    let threshold = shards[0].threshold;
+    let threshold = shards[0].threshold();
     let polys_len = shards[0].ys.len();
     let secret_len = shards[0].secret_len;
 
     // TODO: Implement this consistency checking more nicely.
     for shard in shards {
-        assert!(shard.threshold == threshold, "shards must be consistent");
+        assert!(shard.threshold() == threshold, "shards must be consistent");
         assert!(shard.ys.len() == polys_len, "shards must be consistent");
         assert!(shard.secret_len == secret_len, "shards must be consistent");
     }
@@ -324,12 +211,6 @@ mod test {
         }
         let dealer = Dealer::new(n.into(), &secret);
         TestResult::from_bool(secret == dealer.secret())
-    }
-
-    #[quickcheck]
-    fn shard_bytes_roundtrip(shard: Shard) {
-        let shard2 = Shard::from_wire(&shard.to_wire()).unwrap();
-        assert_eq!(shard, shard2);
     }
 
     #[quickcheck]

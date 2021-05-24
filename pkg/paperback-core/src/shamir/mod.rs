@@ -16,7 +16,9 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+mod dealer;
 mod gf;
-mod shamir;
+mod shard;
 
-pub use shamir::{recover_secret, Dealer, Shard};
+pub use dealer::{recover_secret, Dealer};
+pub use shard::Shard;

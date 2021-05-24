@@ -107,7 +107,7 @@ impl KeyShardBuilder {
         KeyShard {
             inner: self,
             identity: Identity {
-                id_public_key: id_keypair.public.clone(),
+                id_public_key: id_keypair.public,
                 id_signature: id_keypair.sign(&bytes),
             },
         }
@@ -240,7 +240,7 @@ impl MainDocumentMeta {
 
         // Append the public key used for signing.
         // XXX: Make this much nicer...
-        bytes.push('k' as u8);
+        bytes.push(b'k');
         id_public_key.as_bytes().iter().for_each(|b| bytes.push(*b));
 
         bytes
@@ -281,7 +281,7 @@ impl MainDocumentBuilder {
         MainDocument {
             inner: self,
             identity: Identity {
-                id_public_key: id_keypair.public.clone(),
+                id_public_key: id_keypair.public,
                 id_signature: id_keypair.sign(&bytes),
             },
         }

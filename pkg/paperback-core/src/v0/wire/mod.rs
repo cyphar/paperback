@@ -22,6 +22,9 @@ mod key_shard;
 mod main_document;
 
 pub(crate) mod prefixes {
+    // It's easier to read these bytes if they have unconventional groupings.
+    #![allow(clippy::unusual_byte_groupings)]
+
     /// Prefix for an ed25519 public key.
     pub(crate) const PREFIX_ED25519_PUB: u32 = 0xed;
 
@@ -31,11 +34,11 @@ pub(crate) mod prefixes {
 
     /// Prefix for an ed25519 secret key.
     // NOTE: Entirely our own creation and not remotely upstreamable.
-    pub(super) const PREFIX_ED25519_SECRET: u64 = 0xff_ed25519_5ec;
+    pub(super) const PREFIX_ED25519_SECRET: u64 = 0xff_ed25519_536b; // "Sk"
 
     /// Prefix for an ed25519 secret key which has been sealed (equivalent to None).
     // NOTE: Entirely our own creation and not remotely upstreamable.
-    pub(super) const PREFIX_ED25519_SECRET_SEALED: u64 = 0xff_ed25519_000;
+    pub(super) const PREFIX_ED25519_SECRET_SEALED: u64 = 0xff_ed25519_0000;
 
     /// Prefix for a ChaCha20-Poly1305 key.
     // NOTE: Entirely our own creation and not remotely upstreamable.

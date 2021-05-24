@@ -98,7 +98,7 @@ where
     P: AsRef<PublicKey>,
 {
     fn from(from: P) -> Self {
-        Self(from.as_ref().clone())
+        Self(*from.as_ref())
     }
 }
 
@@ -170,16 +170,19 @@ impl UntrustedQuorum {
                     version: main.inner.meta.version,
                     doc_chksum: main.checksum(),
                     quorum_size: main.quorum_size(),
-                    id_public_key: HashablePublicKey(main.identity.id_public_key.clone()),
+                    id_public_key: HashablePublicKey(main.identity.id_public_key),
                 },
                 Type::KeyShard(shard) | Type::ForgedKeyShard(shard) => GroupId {
                     version: shard.inner.version,
-                    doc_chksum: shard.inner.doc_chksum.clone(),
+                    doc_chksum: shard.inner.doc_chksum,
                     quorum_size: shard.inner.shard.threshold(),
-                    id_public_key: HashablePublicKey(shard.identity.id_public_key.clone()),
+                    id_public_key: HashablePublicKey(shard.identity.id_public_key),
                 },
             };
-            groups.entry(group_id).or_insert(vec![]).push(document);
+            groups
+                .entry(group_id)
+                .or_insert_with(Vec::new)
+                .push(document);
         }
         groups.values().cloned().collect::<Vec<_>>()
     }
@@ -193,7 +196,7 @@ impl UntrustedQuorum {
             _ => {
                 return Err(InconsistentQuorumError {
                     message: "key shards and documents are inconsistent".into(),
-                    groups: Grouping(groups.clone()),
+                    groups: Grouping(groups),
                 })
             }
         }
@@ -209,6 +212,8 @@ impl UntrustedQuorum {
         .collect::<Result<Vec<_>, _>>()
         .map_err(|err| InconsistentQuorumError {
             message: err.into(),
+            // NOTE: We have to clone because the compiler doesn't know that if
+            //       we hit this line we are guaranteed to return immediately.
             groups: Grouping(groups.clone()),
         })?;
 
@@ -223,14 +228,14 @@ impl UntrustedQuorum {
             [] => {
                 return Err(InconsistentQuorumError {
                     message: "no main document specified".into(),
-                    groups: Grouping(groups.clone()),
+                    groups: Grouping(groups),
                 });
             }
             // Nore than one main document.
             _ => {
                 return Err(InconsistentQuorumError {
                     message: "more than one main document in grouping".into(),
-                    groups: Grouping(groups.clone()),
+                    groups: Grouping(groups),
                 });
             }
         };
@@ -254,7 +259,7 @@ impl UntrustedQuorum {
                     main_document.quorum_size(),
                     shards.len()
                 ),
-                groups: Grouping(groups.clone()),
+                groups: Grouping(groups),
             });
         }
 
@@ -295,7 +300,7 @@ impl Quorum {
         // choice.
         if let Some(id_private_key) = secret.id_private_key {
             if PublicKey::from(&id_private_key) != self.id_public_key {
-                return Err("private key doesn't match quorum public key")?;
+                return Err("private key doesn't match quorum public key".to_string());
             }
         }
 
@@ -328,7 +333,7 @@ impl Quorum {
         // Make sure the private key matches the expected public key.
         let id_public_key = PublicKey::from(&id_private_key);
         if id_public_key != self.id_public_key {
-            return Err("id_secret_key doesn't match expected id_public_key")?;
+            return Err("id_secret_key doesn't match expected id_public_key".to_string());
         }
 
         // Create the signing keypair.
@@ -342,7 +347,7 @@ impl Quorum {
             .map(|_| {
                 KeyShardBuilder {
                     version: self.main_document.inner.meta.version,
-                    doc_chksum: self.doc_chksum.clone(),
+                    doc_chksum: self.doc_chksum,
                     shard: dealer.next_shard(),
                 }
                 .sign(&id_keypair)
