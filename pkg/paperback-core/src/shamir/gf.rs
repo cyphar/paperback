@@ -133,7 +133,11 @@ impl GfElem {
 #[cfg(test)]
 impl quickcheck::Arbitrary for GfElem {
     fn arbitrary(g: &mut quickcheck::Gen) -> Self {
-        Self(u32::arbitrary(g))
+        Self(GfElemPrimitive::arbitrary(g))
+    }
+
+    fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
+        Box::new(self.0.shrink().into_iter().map(Self))
     }
 }
 
@@ -465,6 +469,16 @@ impl quickcheck::Arbitrary for GfPolynomial {
             (0..g.size())
                 .map(|_| GfElem::arbitrary(g))
                 .collect::<Vec<_>>(),
+        )
+    }
+
+    fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
+        Box::new(
+            self.0
+                .shrink()
+                .into_iter()
+                .filter(|p| p.len() > 0)
+                .map(Self),
         )
     }
 }
