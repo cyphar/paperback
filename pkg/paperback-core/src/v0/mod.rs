@@ -23,7 +23,7 @@ use bip39::{Language, Mnemonic};
 use chacha20poly1305::ChaCha20Poly1305;
 use ed25519_dalek::{Keypair, PublicKey, Signature, Signer};
 use multihash::{Code, Multihash, MultihashDigest};
-use rand::{rngs::OsRng, RngCore};
+use rand::RngCore;
 use unsigned_varint::encode as varuint_encode;
 
 pub type ShardId = String;
@@ -54,10 +54,10 @@ struct Identity {
 
 #[cfg(test)]
 impl quickcheck::Arbitrary for Identity {
-    fn arbitrary<G: quickcheck::Gen>(g: &mut G) -> Self {
+    fn arbitrary(g: &mut quickcheck::Gen) -> Self {
         let bytes = Vec::<u8>::arbitrary(g);
 
-        let id_keypair = Keypair::generate(&mut OsRng);
+        let id_keypair = Keypair::generate(&mut rand::thread_rng());
         let id_signature = id_keypair.sign(&bytes);
 
         Self {
@@ -65,6 +65,16 @@ impl quickcheck::Arbitrary for Identity {
             id_signature,
         }
     }
+}
+
+// Copied from <https://github.com/BurntSushi/quickcheck/pull/292/files>.
+#[cfg(test)]
+pub fn arbitrary_fill_slice<S, T>(g: &mut quickcheck::Gen, mut slice: S)
+where
+    T: quickcheck::Arbitrary,
+    S: AsMut<[T]>,
+{
+    slice.as_mut().fill_with(|| T::arbitrary(g))
 }
 
 #[derive(Debug)]
@@ -106,7 +116,7 @@ impl KeyShardBuilder {
 
 #[cfg(test)]
 impl quickcheck::Arbitrary for KeyShardBuilder {
-    fn arbitrary<G: quickcheck::Gen>(g: &mut G) -> Self {
+    fn arbitrary(g: &mut quickcheck::Gen) -> Self {
         let bytes = Vec::<u8>::arbitrary(g);
         Self {
             version: 0,
@@ -128,8 +138,8 @@ pub struct KeyShard {
 
 #[cfg(test)]
 impl quickcheck::Arbitrary for KeyShard {
-    fn arbitrary<G: quickcheck::Gen>(g: &mut G) -> Self {
-        let id_keypair = Keypair::generate(&mut OsRng);
+    fn arbitrary(g: &mut quickcheck::Gen) -> Self {
+        let id_keypair = Keypair::generate(&mut rand::thread_rng());
         KeyShardBuilder::arbitrary(g).sign(&id_keypair)
     }
 }
@@ -147,9 +157,9 @@ impl KeyShard {
 
         // Generate key and nonce.
         let mut shard_key = ChaChaPolyKey::default();
-        OsRng.fill_bytes(&mut shard_key);
+        rand::thread_rng().fill_bytes(&mut shard_key);
         let mut shard_nonce = ChaChaPolyNonce::default();
-        OsRng.fill_bytes(&mut shard_nonce);
+        rand::thread_rng().fill_bytes(&mut shard_nonce);
 
         // Encrypt the contents.
         let aead = ChaCha20Poly1305::new(&shard_key);
@@ -210,9 +220,9 @@ impl EncryptedKeyShard {
 
 #[cfg(test)]
 impl quickcheck::Arbitrary for EncryptedKeyShard {
-    fn arbitrary<G: quickcheck::Gen>(g: &mut G) -> Self {
+    fn arbitrary(g: &mut quickcheck::Gen) -> Self {
         let mut nonce = ChaChaPolyNonce::default();
-        g.fill_bytes(&mut nonce);
+        arbitrary_fill_slice(g, &mut nonce);
         let ciphertext = Vec::<u8>::arbitrary(g);
         Self { nonce, ciphertext }
     }
@@ -239,10 +249,10 @@ impl MainDocumentMeta {
 
 #[cfg(test)]
 impl quickcheck::Arbitrary for MainDocumentMeta {
-    fn arbitrary<G: quickcheck::Gen>(g: &mut G) -> Self {
+    fn arbitrary(g: &mut quickcheck::Gen) -> Self {
         Self {
             version: 0,
-            quorum_size: g.next_u32(),
+            quorum_size: u32::arbitrary(g),
         }
     }
 }
@@ -280,9 +290,9 @@ impl MainDocumentBuilder {
 
 #[cfg(test)]
 impl quickcheck::Arbitrary for MainDocumentBuilder {
-    fn arbitrary<G: quickcheck::Gen>(g: &mut G) -> Self {
+    fn arbitrary(g: &mut quickcheck::Gen) -> Self {
         let mut nonce = ChaChaPolyNonce::default();
-        g.fill_bytes(&mut nonce);
+        arbitrary_fill_slice(g, &mut nonce);
         Self {
             meta: MainDocumentMeta::arbitrary(g),
             nonce,
@@ -321,8 +331,8 @@ impl MainDocument {
 
 #[cfg(test)]
 impl quickcheck::Arbitrary for MainDocument {
-    fn arbitrary<G: quickcheck::Gen>(g: &mut G) -> Self {
-        let id_keypair = Keypair::generate(&mut OsRng);
+    fn arbitrary(g: &mut quickcheck::Gen) -> Self {
+        let id_keypair = Keypair::generate(&mut rand::thread_rng());
         MainDocumentBuilder::arbitrary(g).sign(&id_keypair)
     }
 }
@@ -342,14 +352,20 @@ mod test {
 
     use quickcheck::TestResult;
 
+    // NOTE: We use u16s and u8s here (and limit the range) because generating
+    //       ridiculously large dealers takes too long because of the amount of
+    //       CSPRNG churn it causes. In principle we could have a special
+    //       Dealer::new_inner() that takes a CoreRng but that's probably not
+    //       necessary.
+
     #[quickcheck]
-    fn paperback_roundtrip_smoke(quorum_size: u32, secret: Vec<u8>) -> TestResult {
-        if quorum_size < 2 || quorum_size > 20 {
+    fn paperback_roundtrip_smoke(quorum_size: u8, secret: Vec<u8>) -> TestResult {
+        if quorum_size < 2 || quorum_size > 64 {
             return TestResult::discard();
         }
 
         // Construct a backup.
-        let backup = Backup::new(quorum_size, &secret).unwrap();
+        let backup = Backup::new(quorum_size.into(), &secret).unwrap();
         let main_document = backup.main_document().clone();
         let shards = (0..quorum_size)
             .map(|_| backup.next_shard().unwrap())

@@ -23,7 +23,6 @@ use crate::{
 
 use std::mem;
 
-use rand::rngs::OsRng;
 use unsigned_varint::{encode as varuint_encode, nom as varuint_nom};
 
 /// Piece of a secret which has been sharded with [Shamir Secret Sharing][sss].
@@ -127,12 +126,12 @@ impl FromWire for Shard {
 
 #[cfg(test)]
 impl quickcheck::Arbitrary for Shard {
-    fn arbitrary<G: quickcheck::Gen>(g: &mut G) -> Self {
+    fn arbitrary(g: &mut quickcheck::Gen) -> Self {
         Self {
-            x: GfElem::new_rand(g),
-            ys: (0..g.size()).map(|_| GfElem::new_rand(g)).collect(),
-            secret_len: g.next_u32() as usize,
-            threshold: g.next_u32(),
+            x: GfElem::arbitrary(g),
+            ys: (0..g.size()).map(|_| GfElem::arbitrary(g)).collect(),
+            secret_len: usize::arbitrary(g),
+            threshold: u32::arbitrary(g),
         }
     }
 }
@@ -167,7 +166,7 @@ impl Dealer {
             .map(GfElem::from_bytes)
             // Generate a random polynomial with the value as the constant.
             .map(|x0| {
-                let mut poly = GfPolynomial::new_rand(k, &mut OsRng);
+                let mut poly = GfPolynomial::new_rand(k, &mut rand::thread_rng());
                 *poly.constant_mut() = x0;
                 poly
             })
@@ -199,7 +198,7 @@ impl Dealer {
     pub fn next_shard(&self) -> Shard {
         let mut x = GfElem::ZERO;
         while x == GfElem::ZERO {
-            x = GfElem::new_rand(&mut OsRng);
+            x = GfElem::new_rand(&mut rand::thread_rng());
         }
         let ys = self
             .polys
@@ -312,12 +311,18 @@ mod test {
 
     use quickcheck::TestResult;
 
+    // NOTE: We use u16s and u8s here (and limit the range) because generating
+    //       ridiculously large dealers takes too long because of the amount of
+    //       CSPRNG churn it causes. In principle we could have a special
+    //       Dealer::new_inner() that takes a CoreRng but that's probably not
+    //       necessary.
+
     #[quickcheck]
-    fn basic_roundtrip(n: u32, secret: Vec<u8>) -> TestResult {
-        if n < 1 {
+    fn basic_roundtrip(n: u16, secret: Vec<u8>) -> TestResult {
+        if n < 1 || n > 4096 {
             return TestResult::discard();
         }
-        let dealer = Dealer::new(n, &secret);
+        let dealer = Dealer::new(n.into(), &secret);
         TestResult::from_bool(secret == dealer.secret())
     }
 
@@ -328,15 +333,15 @@ mod test {
     }
 
     #[quickcheck]
-    fn recover_secret_fail(n: u32, secret: Vec<u8>) -> TestResult {
+    fn recover_secret_fail(n: u8, secret: Vec<u8>) -> TestResult {
         // Invalid data. Note that large n values take a very long time to
         // recover the secret. This is proportional to secret.len(), which is
         // controlled by quickcheck and thus can be quite large.
-        if n < 2 || n > 32 || secret.len() < 1 {
+        if n < 2 || n > 64 || secret.len() < 1 {
             return TestResult::discard();
         }
 
-        let dealer = Dealer::new(n, &secret);
+        let dealer = Dealer::new(n.into(), &secret);
         let shards = (0..(n - 1))
             .map(|_| {
                 let mut shard = dealer.next_shard();
@@ -351,15 +356,15 @@ mod test {
     }
 
     #[quickcheck]
-    fn recover_secret_success(n: u32, secret: Vec<u8>) -> TestResult {
+    fn recover_secret_success(n: u8, secret: Vec<u8>) -> TestResult {
         // Invalid data. Note that large n values take a very long time to
         // recover the secret. This is proportional to secret.len(), which is
         // controlled by quickcheck and thus can be quite large.
-        if n < 1 || n > 32 {
+        if n < 1 || n > 64 {
             return TestResult::discard();
         }
 
-        let dealer = Dealer::new(n, &secret);
+        let dealer = Dealer::new(n.into(), &secret);
         let shards = (0..n)
             .map(|_| {
                 let shard = dealer.next_shard();
@@ -373,14 +378,15 @@ mod test {
     }
 
     #[quickcheck]
-    fn recover_success(n: u32, secret: Vec<u8>) -> TestResult {
-        // Invalid data. Note that even moderately large n values take a very
-        // long time to fully recover. This is proportional to secret.len().
-        if n < 2 || n > 8 {
+    fn limited_recover_success(n: u8, secret: Vec<u8>) -> TestResult {
+        // Invalid data. Note that even moderately large n values take a longer
+        // time to fully recover -- which when paired with quickcheck makes it
+        // take far too long. This is proportional to secret.len() (probably
+        // O(n^2) with big constants or something like that).
+        if n < 2 || n > 12 {
             return TestResult::discard();
         }
-
-        let dealer = Dealer::new(n, secret);
+        let dealer = Dealer::new(n.into(), secret);
         let shards = (0..n)
             .map(|_| {
                 let shard = dealer.next_shard();

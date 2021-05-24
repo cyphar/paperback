@@ -22,7 +22,7 @@ use std::{
 };
 
 use itertools::Itertools;
-use rand::RngCore;
+use rand::{CryptoRng, RngCore};
 
 /// Primitive uint type for GfElems.
 pub type GfElemPrimitive = u32;
@@ -55,7 +55,7 @@ impl GfElem {
     /// Multiplicative identity.
     pub const ONE: GfElem = GfElem(1);
 
-    pub fn new_rand<R: RngCore + ?Sized>(r: &mut R) -> Self {
+    pub fn new_rand<R: CryptoRng + RngCore + ?Sized>(r: &mut R) -> Self {
         Self(r.next_u32())
     }
 
@@ -119,8 +119,8 @@ impl GfElem {
 
 #[cfg(test)]
 impl quickcheck::Arbitrary for GfElem {
-    fn arbitrary<G: quickcheck::Gen>(g: &mut G) -> Self {
-        Self(g.next_u32())
+    fn arbitrary(g: &mut quickcheck::Gen) -> Self {
+        Self(u32::arbitrary(g))
     }
 }
 
@@ -202,7 +202,7 @@ impl DivAssign for GfElem {
 pub struct GfPolynomial(Vec<GfElem>);
 
 impl GfPolynomial {
-    pub fn new_rand<R: RngCore + ?Sized>(n: GfElemPrimitive, r: &mut R) -> Self {
+    pub fn new_rand<R: CryptoRng + RngCore + ?Sized>(n: GfElemPrimitive, r: &mut R) -> Self {
         let k = n + 1;
         Self(
             (0..k)
@@ -428,7 +428,7 @@ impl GfPolynomial {
 
 #[cfg(test)]
 impl quickcheck::Arbitrary for GfPolynomial {
-    fn arbitrary<G: quickcheck::Gen>(g: &mut G) -> Self {
+    fn arbitrary(g: &mut quickcheck::Gen) -> Self {
         GfPolynomial(
             (0..g.size())
                 .map(|_| GfElem::arbitrary(g))

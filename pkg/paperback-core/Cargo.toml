@@ -44,8 +44,8 @@ unsigned-varint = { version = "^0.7", features = ["nom"] }
 zbase32 = "^0.1"
 
 [dev-dependencies]
-quickcheck = "^0.9"
-quickcheck_macros = "^0.9"
+quickcheck = "^1"
+quickcheck_macros = "^1"
 
 [patch.crates-io]
 unsigned-varint = { git = "https://github.com/cyphar/unsigned-varint", branch = "nom6-errors" }
