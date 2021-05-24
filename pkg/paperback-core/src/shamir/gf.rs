@@ -18,11 +18,24 @@
 
 use std::{
     cmp, mem,
-    ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign},
+    ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign},
 };
 
 use itertools::Itertools;
 use rand::{CryptoRng, RngCore};
+
+#[derive(Debug, thiserror::Error)]
+pub enum Error {
+    #[error(
+        "wrong number of points for interpolation: polynomial needs {} but was given {}",
+        needed,
+        num_points
+    )]
+    NumPointsMismatch { needed: usize, num_points: usize },
+
+    #[error("[critical security issue] all points must have an invertible (non-zero) x value")]
+    NonInvertiblePoint,
+}
 
 /// Primitive uint type for GfElems.
 pub type GfElemPrimitive = u32;
@@ -156,6 +169,15 @@ impl SubAssign for GfElem {
     }
 }
 
+impl Neg for GfElem {
+    type Output = Self;
+    fn neg(self) -> Self::Output {
+        // In GF(2^n) addition is the same as subtraction, so everything is its
+        // own additive inverse.
+        self
+    }
+}
+
 impl Mul for GfElem {
     type Output = Self;
     fn mul(mut self, rhs: Self) -> Self::Output {
@@ -280,21 +302,26 @@ impl GfPolynomial {
     /// of an unknown polynomial.
     ///
     /// [lagrange]: https://en.wikipedia.org/wiki/Lagrange_polynomial
-    pub fn lagrange_constant<P: AsRef<[GfPoint]>>(n: GfElemPrimitive, points: P) -> GfElem {
+    pub fn lagrange_constant<P: AsRef<[GfPoint]>>(
+        n: GfElemPrimitive,
+        points: P,
+    ) -> Result<GfElem, Error> {
         let points = points.as_ref();
         let k = points.len();
-        assert!(
-            k == (n + 1) as usize,
-            "need exactly n+1 points for interpolation"
-        );
+        if k != (n + 1) as usize {
+            return Err(Error::NumPointsMismatch {
+                needed: (n + 1) as usize,
+                num_points: k,
+            });
+        }
 
         let (xs, ys): (Vec<_>, Vec<_>) = points.iter().copied().unzip();
 
         // Pre-invert all x values to avoid recalculating it n times.
         let xs_inv = xs
             .iter()
-            .map(|x| x.inverse().expect("all x values must be invertible"))
-            .collect::<Vec<_>>();
+            .map(|x| x.inverse().ok_or(Error::NonInvertiblePoint))
+            .collect::<Result<Vec<_>, _>>()?;
 
         // To interpolate only the constant term of a polynomial, you can take
         // the full Lagrange polynomial expressions (which requires expanding a
@@ -326,7 +353,7 @@ impl GfPolynomial {
         //   L(0) = \sum_{j=0}^{k} \frac{y_j}
         //                              {\prod_{m=0,m!=j}^{k}
         //                                    (1-\frac{x_j}{x_m})}
-        (0..k).fold(GfElem::ZERO, |acc, j| {
+        Ok((0..k).fold(GfElem::ZERO, |acc, j| {
             // \sum_{j=0}^{k} \frac{y_j}...
             acc + ys[j]
                 // ...{linv_j(0)}
@@ -336,7 +363,7 @@ impl GfPolynomial {
                         // (1-frac{x_j}{x_m}) == (1-x_j*xinv_m)
                         acc * (GfElem::ONE - xs[j] * xs_inv[m])
                     })
-        })
+        }))
     }
 
     /// Interpolate a polynomial of degree `n` in `GF(2^32)`, given a set of
@@ -351,13 +378,15 @@ impl GfPolynomial {
     /// values that are not `x == GfElem::ZERO`.
     ///
     /// [lagrange]: https://en.wikipedia.org/wiki/Lagrange_polynomial
-    pub fn lagrange<P: AsRef<[GfPoint]>>(n: GfElemPrimitive, points: P) -> Self {
+    pub fn lagrange<P: AsRef<[GfPoint]>>(n: GfElemPrimitive, points: P) -> Result<Self, Error> {
         let points = points.as_ref();
         let k = points.len();
-        assert!(
-            k == (n + 1) as usize,
-            "need exactly n+1 points for interpolation"
-        );
+        if k != (n + 1) as usize {
+            return Err(Error::NumPointsMismatch {
+                needed: (n + 1) as usize,
+                num_points: k,
+            });
+        }
 
         let (xs, ys): (Vec<_>, Vec<_>) = points.iter().copied().unzip();
 
@@ -409,11 +438,8 @@ impl GfPolynomial {
             // \sum_{i=0}^{k} SUM_COMB({-a}, i) x^i
             let coeffs = (0..k)
                 .map(|i| {
-                    // SUM_COMB({-a}, i), but note that we don't have to negate
-                    // the xs values because in GF(2^32) addition and
-                    // subtraction are identical operations (thus -x == x).
                     idxs.iter()
-                        .map(|i| xs[*i])
+                        .map(|i| -xs[*i])
                         .combinations(i)
                         .map(|xs| xs.iter().fold(GfElem::ONE, |acc, x| acc * *x))
                         .fold(GfElem::ZERO, Add::add)
@@ -428,7 +454,7 @@ impl GfPolynomial {
         });
 
         let first_poly = polys.next().expect("must be at least one polynomial");
-        polys.fold(first_poly, |acc, p| acc + p)
+        Ok(polys.fold(first_poly, |acc, p| acc + p))
     }
 }
 
@@ -589,7 +615,8 @@ mod test {
             .collect::<Vec<_>>();
         let ys = xs.iter().map(|x| poly.evaluate(*x));
         let points = xs.iter().copied().zip(ys).collect::<Vec<_>>();
-        let constant = GfPolynomial::lagrange_constant(n, points.as_slice());
+        let constant = GfPolynomial::lagrange_constant(n, points.as_slice())
+            .expect("should not get errors from lagrange_constant");
 
         poly.constant() == constant
     }
@@ -606,7 +633,8 @@ mod test {
             .collect::<Vec<_>>();
         let ys = xs.iter().map(|x| poly.evaluate(*x));
         let points = xs.iter().copied().zip(ys).collect::<Vec<_>>();
-        let interpolated_poly = GfPolynomial::lagrange(n, points);
+        let interpolated_poly =
+            GfPolynomial::lagrange(n, points).expect("should not get errors from lagrange");
 
         TestResult::from_bool(poly == interpolated_poly)
     }

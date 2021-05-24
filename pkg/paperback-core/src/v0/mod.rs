@@ -16,7 +16,10 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use crate::{shamir::Shard, v0::wire::prefixes::*};
+use crate::{
+    shamir::{Error as ShamirError, Shard},
+    v0::wire::prefixes::*,
+};
 
 use aead::{generic_array::GenericArray, Aead, AeadCore, NewAead};
 use bip39::{Language, Mnemonic};
@@ -45,6 +48,42 @@ fn check_length_consts() {
 }
 
 const CHECKSUM_ALGORITHM: Code = Code::Blake2b256;
+
+#[derive(Debug, thiserror::Error)]
+pub enum Error {
+    #[error("security invariant violated: {}", .0)]
+    InvariantViolation(&'static str),
+
+    #[error("missing necessary cabibilities to complete request: {}", .0)]
+    MissingCapability(&'static str),
+
+    #[error("aead encryption cryptographic error: {}", .0)]
+    AeadEncryption(aead::Error),
+
+    #[error("aead decryption cryptographic error: {}", .0)]
+    AeadDecryption(aead::Error),
+
+    #[error("shamir algorithm operation: {}", .0)]
+    Shamir(#[from] ShamirError),
+
+    #[error("failed to decode shard secret: {}", .0)]
+    ShaardSecretDecode(String),
+
+    #[error("bip39 phrase failure: {}", .0)]
+    Bip39(bip39::ErrorKind),
+
+    #[error("other error: {}", .0)]
+    Other(String),
+}
+
+impl From<anyhow::Error> for Error {
+    fn from(inner: anyhow::Error) -> Self {
+        match inner.downcast::<bip39::ErrorKind>() {
+            Ok(err) => Self::Bip39(err),
+            Err(err) => Self::Other(err.to_string()),
+        }
+    }
+}
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 struct Identity {
@@ -151,7 +190,7 @@ impl KeyShard {
         self.inner.shard.id()
     }
 
-    pub fn encrypt(self) -> Result<(EncryptedKeyShard, KeyShardCodewords), String> {
+    pub fn encrypt(self) -> Result<(EncryptedKeyShard, KeyShardCodewords), Error> {
         // Serialise.
         let wire_shard = self.to_wire();
 
@@ -165,11 +204,11 @@ impl KeyShard {
         let aead = ChaCha20Poly1305::new(&shard_key);
         let wire_shard = aead
             .encrypt(&shard_nonce, wire_shard.as_slice())
-            .map_err(|err| format!("{:?}", err))?; // XXX: Ugly, fix this.
+            .map_err(Error::AeadEncryption)?;
 
         // Convert key to a BIP-39 mnemonic.
         let phrase = Mnemonic::from_entropy(&shard_key, CODEWORD_LANGUAGE)
-            .map_err(|e| format!("{:?}", e))? // XXX: Ugly, fix this.
+            .map_err(Error::from)? // XXX: Ugly, fix this.
             .into_phrase();
         let mut codewords = KeyShardCodewords::default();
         codewords.clone_from_slice(

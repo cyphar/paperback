@@ -19,7 +19,7 @@
 use crate::{
     shamir::Dealer,
     v0::{
-        ChaChaPolyKey, ChaChaPolyNonce, KeyShard, KeyShardBuilder, MainDocument,
+        ChaChaPolyKey, ChaChaPolyNonce, Error, KeyShard, KeyShardBuilder, MainDocument,
         MainDocumentBuilder, MainDocumentMeta, ShardSecret, ToWire,
     },
 };
@@ -37,7 +37,7 @@ pub struct Backup {
 
 impl Backup {
     // XXX: This internal API is a bit ugly...
-    fn inner_new(quorum_size: u32, secret: &[u8], sealed: bool) -> Result<Self, String> {
+    fn inner_new(quorum_size: u32, secret: &[u8], sealed: bool) -> Result<Self, Error> {
         // Generate identity keypair.
         let id_keypair = Keypair::generate(&mut OsRng);
 
@@ -75,7 +75,7 @@ impl Backup {
         };
         let ciphertext = aead
             .encrypt(&doc_nonce, payload)
-            .map_err(|err| format!("{:?}", err))?; // XXX: Ugly, fix this.
+            .map_err(Error::AeadEncryption)?;
 
         // Continue MainDocument construction.
         let main_document = MainDocumentBuilder {
@@ -95,11 +95,11 @@ impl Backup {
         })
     }
 
-    pub fn new<B: AsRef<[u8]>>(quorum_size: u32, secret: B) -> Result<Self, String> {
+    pub fn new<B: AsRef<[u8]>>(quorum_size: u32, secret: B) -> Result<Self, Error> {
         Self::inner_new(quorum_size, secret.as_ref(), false)
     }
 
-    pub fn new_sealed<B: AsRef<[u8]>>(quorum_size: u32, secret: B) -> Result<Self, String> {
+    pub fn new_sealed<B: AsRef<[u8]>>(quorum_size: u32, secret: B) -> Result<Self, Error> {
         Self::inner_new(quorum_size, secret.as_ref(), true)
     }
 
@@ -107,7 +107,7 @@ impl Backup {
         &self.main_document
     }
 
-    pub fn next_shard(&self) -> Result<KeyShard, String> {
+    pub fn next_shard(&self) -> Result<KeyShard, Error> {
         // Extend new shard.
         Ok(KeyShardBuilder {
             version: self.main_document.inner.meta.version,

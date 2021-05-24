@@ -19,6 +19,7 @@
 use crate::shamir::{
     gf::{GfElem, GfElemPrimitive, GfPolynomial},
     shard::Shard,
+    Error,
 };
 
 use std::mem;
@@ -111,8 +112,7 @@ impl Dealer {
     /// This operation is significantly slower than `recover_secret`, so it
     /// should only be used if it is necessary to construct additional shards
     /// with `Dealer::next_shard`.
-    pub fn recover<S: AsRef<[Shard]>>(shards: S) -> Self {
-        // TODO: Add -> Result<Self, _>.
+    pub fn recover<S: AsRef<[Shard]>>(shards: S) -> Result<Self, Error> {
         let shards = shards.as_ref();
         assert!(!shards.is_empty(), "must be provided at least one shard");
 
@@ -139,15 +139,15 @@ impl Dealer {
                 let ys = shards.iter().map(|s| s.ys[i]);
 
                 let points = xs.zip(ys).collect::<Vec<_>>();
-                GfPolynomial::lagrange(threshold - 1, points.as_slice())
+                GfPolynomial::lagrange(threshold - 1, points.as_slice()).into()
             })
-            .collect::<Vec<_>>();
+            .collect::<Result<Vec<_>, _>>()?;
 
-        Self {
+        Ok(Self {
             polys,
             secret_len,
             threshold,
-        }
+        })
     }
 }
 
@@ -157,8 +157,7 @@ impl Dealer {
 /// always be used if the caller only needs to recover the secret.
 /// `Dealer::recover` should only be used if the caller needs to create
 /// additional shards with `Dealer::next_shard`.
-pub fn recover_secret<S: AsRef<[Shard]>>(shards: S) -> Vec<u8> {
-    // TODO: Add -> Result<Vec<u8>, _>.
+pub fn recover_secret<S: AsRef<[Shard]>>(shards: S) -> Result<Vec<u8>, Error> {
     let shards = shards.as_ref();
     assert!(!shards.is_empty(), "must be provided at least one shard");
 
@@ -179,17 +178,19 @@ pub fn recover_secret<S: AsRef<[Shard]>>(shards: S) -> Vec<u8> {
         threshold
     );
 
-    (0..polys_len)
+    Ok((0..polys_len)
         .map(|i| {
             let xs = shards.iter().map(|s| s.x);
             let ys = shards.iter().map(|s| s.ys[i]);
 
             let points = xs.zip(ys).collect::<Vec<_>>();
-            GfPolynomial::lagrange_constant(threshold - 1, points.as_slice())
+            GfPolynomial::lagrange_constant(threshold - 1, points.as_slice()).into()
         })
+        .collect::<Result<Vec<_>, _>>()? // XXX: I don't like this but flat_map() causes issues.
+        .into_iter()
         .flat_map(|x| x.to_bytes())
         .take(secret_len)
-        .collect::<Vec<_>>()
+        .collect::<Vec<_>>())
 }
 
 #[cfg(test)]
@@ -233,7 +234,7 @@ mod test {
             })
             .collect::<Vec<_>>();
 
-        TestResult::from_bool(recover_secret(shards) != secret)
+        TestResult::from_bool(recover_secret(shards).unwrap() != secret)
     }
 
     #[quickcheck]
@@ -255,7 +256,7 @@ mod test {
             })
             .collect::<Vec<_>>();
 
-        TestResult::from_bool(recover_secret(shards) == secret)
+        TestResult::from_bool(recover_secret(shards).unwrap() == secret)
     }
 
     #[quickcheck]
@@ -276,7 +277,7 @@ mod test {
                 shard
             })
             .collect::<Vec<_>>();
-        let recovered_dealer = Dealer::recover(shards);
+        let recovered_dealer = Dealer::recover(shards).unwrap();
 
         TestResult::from_bool(dealer.polys == recovered_dealer.polys)
     }

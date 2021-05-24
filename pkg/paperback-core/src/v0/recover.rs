@@ -18,7 +18,7 @@
 
 use crate::{
     shamir::{self, Dealer},
-    v0::{FromWire, KeyShard, KeyShardBuilder, MainDocument, ShardSecret},
+    v0::{Error, FromWire, KeyShard, KeyShardBuilder, MainDocument, ShardSecret},
 };
 
 use std::{
@@ -288,19 +288,22 @@ pub struct Quorum {
 }
 
 impl Quorum {
-    pub fn recover_document(&self) -> Result<Vec<u8>, String> {
+    pub fn recover_document(&self) -> Result<Vec<u8>, Error> {
         let shards = self
             .shards
             .iter()
             .map(|s| s.inner.shard.clone())
             .collect::<Vec<_>>();
-        let secret = ShardSecret::from_wire(shamir::recover_secret(shards))?;
+        let secret = ShardSecret::from_wire(shamir::recover_secret(shards)?)
+            .map_err(Error::ShaardSecretDecode)?;
 
         // Double-check that the private key agrees with the quorum's public key
         // choice.
         if let Some(id_private_key) = secret.id_private_key {
             if PublicKey::from(&id_private_key) != self.id_public_key {
-                return Err("private key doesn't match quorum public key".to_string());
+                return Err(Error::InvariantViolation(
+                    "private key doesn't match quorum public key",
+                ));
             }
         }
 
@@ -311,10 +314,10 @@ impl Quorum {
             aad: &self.main_document.inner.meta.aad(&self.id_public_key),
         };
         aead.decrypt(&self.main_document.inner.nonce, payload)
-            .map_err(|err| format!("{:?}", err)) // XXX: Ugly, fix this.
+            .map_err(Error::AeadDecryption)
     }
 
-    pub fn extend_shards(&self, n: u32) -> Result<Vec<KeyShard>, String> {
+    pub fn extend_shards(&self, n: u32) -> Result<Vec<KeyShard>, Error> {
         let shards = self
             .shards
             .iter()
@@ -322,18 +325,20 @@ impl Quorum {
             .collect::<Vec<_>>();
 
         // Conduct a complete recovery.
-        let dealer = Dealer::recover(shards);
-        let secret = ShardSecret::from_wire(dealer.secret())?;
+        let dealer = Dealer::recover(shards)?;
+        let secret = ShardSecret::from_wire(dealer.secret()).map_err(Error::ShaardSecretDecode)?;
 
         // Get the private key so we can sign the new shards.
-        let id_private_key = secret
-            .id_private_key
-            .ok_or("document is sealed -- no new key shards allowed")?;
+        let id_private_key = secret.id_private_key.ok_or(Error::MissingCapability(
+            "document is sealed -- no new key shards allowed",
+        ))?;
 
         // Make sure the private key matches the expected public key.
         let id_public_key = PublicKey::from(&id_private_key);
         if id_public_key != self.id_public_key {
-            return Err("id_secret_key doesn't match expected id_public_key".to_string());
+            return Err(Error::InvariantViolation(
+                "id_secret_key doesn't match expected id_public_key",
+            ));
         }
 
         // Create the signing keypair.

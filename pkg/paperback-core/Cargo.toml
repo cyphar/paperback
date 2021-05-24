@@ -29,6 +29,7 @@ edition = "2018"
 
 [dependencies]
 aead = "^0.4"
+anyhow = "^1"
 chacha20poly1305 = "^0.8"
 digest = "^0.9"
 ed25519-dalek = "^1.0.1"
@@ -39,6 +40,7 @@ rand = "^0.7" # This must match the ed25519-dalek version.
 serde = { version = "^1", features = ["derive"] }
 signature = "^1"
 tiny-bip39 = "^0.8"
+thiserror = "^1"
 typenum = "^1"
 unsigned-varint = { version = "^0.7", features = ["nom"] }
 zbase32 = "^0.1"
