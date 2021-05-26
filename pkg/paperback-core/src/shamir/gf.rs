@@ -562,6 +562,11 @@ mod test {
     }
 
     #[quickcheck]
+    fn add_inverse_alt(a: GfElem) -> bool {
+        a - a == GfElem::ZERO
+    }
+
+    #[quickcheck]
     fn mul_inverse(a: GfElem) -> bool {
         match (a, a.inverse()) {
             (GfElem::ZERO, None) => true,
@@ -576,6 +581,22 @@ mod test {
             (GfElem::ZERO, None) => true,
             (_, Some(a_inv)) => GfElem::ONE / a == a_inv,
             _ => false,
+        }
+    }
+
+    #[quickcheck]
+    fn div_inverse_alt(a: GfElem) -> bool {
+        match a {
+            GfElem::ZERO => true,
+            _ => (a / a) == GfElem::ONE,
+        }
+    }
+
+    #[quickcheck]
+    fn div_mul_invertibility(a: GfElem, b: GfElem) -> TestResult {
+        match b {
+            GfElem::ZERO => TestResult::discard(),
+            _ => TestResult::from_bool((a / b) * b == a),
         }
     }
 
