@@ -132,13 +132,16 @@ impl GfElem {
         b: GfElemPrimitive,
         carry: bool,
     ) -> (GfElemPrimitive, GfElemPrimitive) {
+        // Don't call me for division by zero. This code would loop forever.
+        assert!(b != 0);
+
         fn msb(p: GfElemPrimitive) -> isize {
             // TODO: Use u32::BITS.
-            32 - (p.leading_zeros() as isize) - 1
+            32 - (p.leading_zeros() as isize)
         }
 
         let (mut q, mut r) = (0, a);
-        let (mut rmsb, bmsb) = (msb(r), msb(b));
+        let bmsb = msb(b);
 
         // The "carry" is only used for the first EEA iteration where you're
         // dividing Self::POLYNOMIAL.
@@ -150,6 +153,7 @@ impl GfElem {
             }
         }
 
+        let mut rmsb = msb(r);
         while rmsb >= bmsb {
             // Because rd is the degree, we know that lc (1 << (rd-1)) is 1.
             let shift = rmsb - bmsb; // lc/c * x^(deg(r)-d) (= x^(deg(r)-d))
@@ -200,6 +204,9 @@ impl GfElem {
     }
 
     fn polynomial_inv(a: GfElemPrimitive) -> Option<GfElemPrimitive> {
+        if a == 0 {
+            return None;
+        }
         // Technically this algorithm can be cleanly done entirely in the loop,
         // but becasue we first need to divide the characteristic polynomial,
         // it's much cleaner to do the first iteration outside.
@@ -222,11 +229,10 @@ impl GfElem {
             r = tmpr;
         }
 
-        if r > 0 {
-            None
-        } else {
-            Some(t)
-        }
+        // If gcd(a, Self::POLYNOMIAL) != 1, that means the polynomial is
+        // not an irreducible polynomial of order (at least) 32 in GF(2).
+        assert!(r == 1);
+        Some(t)
     }
 
     pub fn inverse(self) -> Option<Self> {
