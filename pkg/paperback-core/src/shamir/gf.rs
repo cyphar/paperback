@@ -62,6 +62,9 @@ impl GfElem {
     // x^32 + x^22 + x^2 + x^1 + 1
     const POLYNOMIAL: u64 = 0b1_0000_0000_0100_0000_0000_0000_0000_0111;
 
+    // Self::POLYNOMIAL but with the top-most bit unset.
+    const TRUNC_POLYNOMIAL: u32 = 0b0000_0000_0100_0000_0000_0000_0000_0111;
+
     /// Additive identity.
     pub const ZERO: GfElem = GfElem(0);
 
@@ -105,6 +108,7 @@ impl GfElem {
     }
 
     // NOTE: Definitely not constant-time.
+    #[allow(dead_code)]
     pub fn pow(self, mut n: usize) -> Self {
         // Multiplication is not really cheap, so we optimise it by doing it
         // with an O(log(n)) worst case rather than the obvious O(n).
@@ -120,12 +124,115 @@ impl GfElem {
         result
     }
 
+    // Implementation of Euclidean division for GF(2) polynomials (a = bq + r),
+    // useful for computing the inverses with the Extended Euclid GCD Algorithm.
+    // Returns (q, r). If carry is set, a is treated like (a + x^32).
+    fn polynomial_div(
+        a: GfElemPrimitive,
+        b: GfElemPrimitive,
+        carry: bool,
+    ) -> (GfElemPrimitive, GfElemPrimitive) {
+        fn msb(p: GfElemPrimitive) -> isize {
+            // TODO: Use u32::BITS.
+            32 - (p.leading_zeros() as isize) - 1
+        }
+
+        let (mut q, mut r) = (0, a);
+        let (mut rmsb, bmsb) = (msb(r), msb(b));
+
+        // The "carry" is only used for the first EEA iteration where you're
+        // dividing Self::POLYNOMIAL.
+        if carry {
+            let shift = 33 /* 32 + 1 */ - bmsb;
+            if shift < 32 {
+                q ^= 1 << shift; // q += s
+                r ^= b << shift; // r -= s*b (= b*x^(deg(r)-d))
+            }
+        }
+
+        while rmsb >= bmsb {
+            // Because rd is the degree, we know that lc (1 << (rd-1)) is 1.
+            let shift = rmsb - bmsb; // lc/c * x^(deg(r)-d) (= x^(deg(r)-d))
+            q ^= 1 << shift; // q += s
+            r ^= b << shift; // r -= s*b (= b*x^(deg(r)-d))
+            rmsb = msb(r);
+        }
+
+        (q, r)
+    }
+
+    /*
     pub fn inverse(self) -> Option<Self> {
         match self {
             Self::ZERO => None,
             // TODO: Switch to Itoh-Tsujii inversion algorithm. pow(2^32-2)
             //       isn't cheap, even though it is theoretically constant-time.
             _ => Some(self.pow(GfElemPrimitive::max_value() as usize - 1)),
+        }
+    }
+    */
+
+    fn mult(mut a: GfElemPrimitive, mut b: GfElemPrimitive) -> GfElemPrimitive {
+        /*
+        let mut p: GfElemPrimitive = 0;
+        for _ in 0..32 {
+            let mask = ((a >> 31) & 1).wrapping_neg() as u64;
+            p ^= a & (b & 1).wrapping_neg();
+            a = (((a as u64) << 1) ^ (Self::POLYNOMIAL & mask)) as GfElemPrimitive;
+            b >>= 1;
+        }
+        p
+        */
+
+        let mut p = 0;
+        while a != 0 {
+            if a & 1 != 0 {
+                p ^= b;
+            }
+            a >>= 1;
+            let carry = b & 0x80000000 != 0;
+            b <<= 1;
+            if carry {
+                b ^= Self::TRUNC_POLYNOMIAL;
+            }
+        }
+        p
+    }
+
+    fn polynomial_inv(a: GfElemPrimitive) -> Option<GfElemPrimitive> {
+        // Technically this algorithm can be cleanly done entirely in the loop,
+        // but becasue we first need to divide the characteristic polynomial,
+        // it's much cleaner to do the first iteration outside.
+        let (q1, r1) = Self::polynomial_div(Self::TRUNC_POLYNOMIAL, a, true);
+
+        let (mut t, mut newt) = (1, q1); // (0, 1) -> (1, 0 ^ mult(q, 1))
+        let (mut r, mut newr) = (a, r1); // (P, a) -> (a, P ^ mult(q, a))
+
+        while newr != 0 {
+            let (qi, ri) = Self::polynomial_div(r, newr, false);
+
+            // If only destructuring_assignment was stable!
+
+            let tmpt = newt;
+            newt = t ^ Self::mult(qi, newt);
+            t = tmpt;
+
+            let tmpr = newr;
+            newr = ri;
+            r = tmpr;
+        }
+
+        if r > 0 {
+            None
+        } else {
+            Some(t)
+        }
+    }
+
+    pub fn inverse(self) -> Option<Self> {
+        match self {
+            Self::ZERO => None,
+            _ => Self::polynomial_inv(self.0).map(Self),
         }
     }
 }
@@ -221,6 +328,11 @@ impl Div for GfElem {
 
 impl DivAssign for GfElem {
     fn div_assign(&mut self, rhs: Self) {
+        //self.0 = Self::polynomial_div(self.0.into(), rhs.0.into())
+        //.0
+        //.try_into()
+        //.expect("division of two u32s should give u32");
+
         // In order to divide, we need to compute the inverse and multiply (like
         // we would with regular arthimetic in R).
         #![allow(clippy::suspicious_op_assign_impl)]
@@ -511,6 +623,11 @@ mod test {
 
     use quickcheck::TestResult;
     use rand::rngs::OsRng;
+
+    #[test]
+    fn pls() {
+        GfElem::new_rand(&mut rand::thread_rng()).inverse();
+    }
 
     #[quickcheck]
     fn add_associativity(a: GfElem, b: GfElem) -> bool {
