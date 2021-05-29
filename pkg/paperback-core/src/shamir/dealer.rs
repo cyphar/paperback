@@ -139,7 +139,7 @@ impl Dealer {
                 let ys = shards.iter().map(|s| s.ys[i]);
 
                 let points = xs.zip(ys).collect::<Vec<_>>();
-                GfPolynomial::lagrange(threshold - 1, points.as_slice()).into()
+                GfPolynomial::lagrange(threshold - 1, points.as_slice())
             })
             .collect::<Result<Vec<_>, _>>()?;
 
@@ -184,7 +184,7 @@ pub fn recover_secret<S: AsRef<[Shard]>>(shards: S) -> Result<Vec<u8>, Error> {
             let ys = shards.iter().map(|s| s.ys[i]);
 
             let points = xs.zip(ys).collect::<Vec<_>>();
-            GfPolynomial::lagrange_constant(threshold - 1, points.as_slice()).into()
+            GfPolynomial::lagrange_constant(threshold - 1, points.as_slice())
         })
         .collect::<Result<Vec<_>, _>>()? // XXX: I don't like this but flat_map() causes issues.
         .into_iter()
