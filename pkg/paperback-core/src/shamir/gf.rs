@@ -62,6 +62,9 @@ impl GfElem {
     // x^32 + x^22 + x^2 + x^1 + 1
     const POLYNOMIAL: u64 = 0b1_0000_0000_0100_0000_0000_0000_0000_0111;
 
+    // Self::POLYNOMIAL but with the top-most bit unset.
+    const TRUNC_POLYNOMIAL: u32 = 0b0000_0000_0100_0000_0000_0000_0000_0111;
+
     /// Additive identity.
     pub const ZERO: GfElem = GfElem(0);
 
@@ -105,6 +108,7 @@ impl GfElem {
     }
 
     // NOTE: Definitely not constant-time.
+    #[allow(dead_code)]
     pub fn pow(self, mut n: usize) -> Self {
         // Multiplication is not really cheap, so we optimise it by doing it
         // with an O(log(n)) worst case rather than the obvious O(n).
@@ -120,13 +124,135 @@ impl GfElem {
         result
     }
 
-    pub fn inverse(self) -> Option<Self> {
-        match self {
-            Self::ZERO => None,
-            // TODO: Switch to Itoh-Tsujii inversion algorithm. pow(2^32-2)
-            //       isn't cheap, even though it is theoretically constant-time.
-            _ => Some(self.pow(GfElemPrimitive::max_value() as usize - 1)),
+    // Implementation of Euclidean division for GF(2) polynomials (a = bq + r),
+    // useful for computing the inverses with the Extended Euclid GCD Algorithm.
+    // Returns (q, r). If carry is set, a is treated like (a + x^32).
+    fn polynomial_div(
+        a: GfElemPrimitive,
+        b: GfElemPrimitive,
+        carry: bool,
+    ) -> (GfElemPrimitive, GfElemPrimitive) {
+        // Don't call me for division by zero. This code would loop forever.
+        assert_ne!(b, 0, "tried to divide by zero in internal function");
+
+        fn msb(p: GfElemPrimitive) -> isize {
+            // TODO: Use u32::BITS.
+            32 - (p.leading_zeros() as isize)
         }
+
+        let (mut q, mut r) = (0, a);
+        let bmsb = msb(b);
+
+        // The "carry" is only used for the first EEA iteration where you're
+        // dividing Self::POLYNOMIAL.
+        if carry {
+            let shift = 33 /* 32 + 1 */ - bmsb;
+            if shift < 32 {
+                q ^= 1 << shift; // q += s
+                r ^= b << shift; // r -= s*b (= b*x^(deg(r)-d))
+            }
+        }
+
+        let mut rmsb = msb(r);
+        while rmsb >= bmsb {
+            // Because rd is the degree, we know that lc (1 << (rd-1)) is 1.
+            let shift = rmsb - bmsb; // lc/c * x^(deg(r)-d) (= x^(deg(r)-d))
+            q ^= 1 << shift; // q += s
+            r ^= b << shift; // r -= s*b (= b*x^(deg(r)-d))
+            rmsb = msb(r);
+        }
+
+        (q, r)
+    }
+
+    fn polynomial_mul(mut a: GfElemPrimitive, mut b: GfElemPrimitive) -> GfElemPrimitive {
+        // A modified and hopefully-constant-time implementation of Russian
+        // Peasant Multiplication which avoids branching by using masks instead.
+        //   <https://en.wikipedia.org/wiki/Finite_field_arithmetic#D_programming_example>
+        let mut p: GfElemPrimitive = 0;
+        for _ in 0..32 {
+            let mask = ((a >> 31) & 1).wrapping_neg() as u64;
+            p ^= a & (b & 1).wrapping_neg();
+            a = (((a as u64) << 1) ^ (Self::POLYNOMIAL & mask)) as GfElemPrimitive;
+            b >>= 1;
+        }
+        p
+    }
+
+    pub fn inverse(self) -> Option<Self> {
+        let a = self.0;
+
+        // We cannot invert 0 for obvious reasons.
+        if a == 0 {
+            return None;
+        }
+
+        // This is an implementation of the Extended Euclid Algorithm, in order
+        // to get the multiplicative inverse of self. The full description of
+        // why this works can be found on Wikipedia[1]. The short version is
+        // that you can extend the GCD algorithm with some extra bookkeeping and
+        // this allows you to extract the coefficients of Bézout's identity
+        //
+        //     ns + at = gcd(a, n)
+        //
+        // but in modular arithmetic, if you take n as the prime field as the
+        // ring of integers modulo n, then a and n must be coprime giving us:
+        //
+        //     ns + at = 1
+        //     at = 1 (mod n)
+        //
+        // which means that if we can find t, we have the modular multiplicative
+        // inverse of a -- and the GCD algorithm (or rather the EEA algorithm)
+        // can be used to find t in a fairly efficient manner.
+        //
+        // Note that the above is straight-forward for regular modular
+        // arithmetic, but we're in GF(2^32) which is a simple algebraic field
+        // expansion of GF(2). However, luckily the algorithm is pretty much the
+        // same in GF(2^32), except that:
+        //
+        //  * The p we take is the characteristic polynomial (irreducible
+        //    polynomials are like prime numbers in polynomial fields).
+        //  * We use polynomial definitions of the addition, multiplication, and
+        //    Euclidian division operations.
+        //
+        // [1]: <https://en.wikipedia.org/wiki/Extended_Euclidean_algorithm>
+
+        // Technically this algorithm can be cleanly done entirely in the loop,
+        // but becasue we first need to divide the characteristic polynomial
+        // (which is by definition larger than u32), it's much cleaner to do the
+        // first iteration outside.
+        let (q1, r1) = Self::polynomial_div(Self::TRUNC_POLYNOMIAL, a, true);
+
+        let (mut t, mut newt) = (1, q1); // (0, 1) -> (1, 0 - q1 * 1)
+        let (mut r, mut newr) = (a, r1); // (P, a) -> (a, P - q1 * a) -> (a, r1)
+
+        while newr != 0 {
+            // The trick with updating newr is to notice that (r - qi*newr) is
+            // undoing part of the polynomial_div calculation and you can just
+            // reuse that result. Recall that by definition (r = qi*newr + ri).
+            //
+            //    newr := r - qi*newr
+            //          = r - (r - ri)    [r = qi*newr + ri => r - ri = q*newr]
+            //          = ri
+            let (qi, ri) = Self::polynomial_div(r, newr, false);
+
+            // TODO: Switch this once destructuring_assignment is stable.
+
+            // (t, newt) = (newt, t - qi * newt)
+            let tmpt = newt;
+            newt = t ^ Self::polynomial_mul(qi, newt);
+            t = tmpt;
+
+            // (r, newr) = (newr, r - qi * newr) = (newr, ri)
+            let tmpr = newr;
+            newr = ri;
+            r = tmpr;
+        }
+
+        // If gcd(a, Self::POLYNOMIAL) != 1, that means the polynomial is
+        // not an irreducible polynomial of order (at least) 32 in GF(2).
+        assert_eq!(r, 1, "Self::POLYNOMIAL not irreducible in GF(2)!");
+        Some(Self(t))
     }
 }
 
@@ -192,22 +318,7 @@ impl Mul for GfElem {
 
 impl MulAssign for GfElem {
     fn mul_assign(&mut self, rhs: Self) {
-        // A modified and hopefully-constant-time implementation of Russian
-        // Peasant Multiplication which avoids branching by using masks instead.
-        //   <https://en.wikipedia.org/wiki/Finite_field_arithmetic#D_programming_example>
-
-        let mut a = self.0;
-        let mut b = rhs.0;
-        let mut p: GfElemPrimitive = 0;
-        for _ in 0..32 {
-            let mask = ((a >> 31) & 1).wrapping_neg() as u64;
-            p ^= a & (b & 1).wrapping_neg();
-            a = (((a as u64) << 1) ^ (Self::POLYNOMIAL & mask)) as GfElemPrimitive;
-            b >>= 1;
-        }
-
-        // Save the product.
-        self.0 = p;
+        self.0 = Self::polynomial_mul(self.0, rhs.0);
     }
 }
 
