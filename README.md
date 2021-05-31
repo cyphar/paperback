@@ -61,16 +61,17 @@ One of the most important things when considering using `paperback` is to keep
 in mind that the integrity of the backup is only as good as the paper you print
 it on. Most "cheap" copy paper contains some levels of acid (either from
 processing or from the lignin in wood pulp), and thus after a few years will
-begin to yellow and become brittle. Archival paper is a grade of paper that is
-designed to last longer than ordinary copy paper, and has standardised
-requirements for acidity levels and so on. The [National Archives of
-Australia][naa-standard] have an even more stringent standard for Archival
-paper and will certify consumer-level archival paper if it meets their strict
-requirements. Though archival paper is quite a bit more expensive than copy
-paper, you can consider it a fairly minor cost (as most users won't need more
-than 50 sheets). If archival paper is too expensive, try to find alkaline or
-acid-free paper (you can ask your state or local library if they have any
-recommendations).
+begin to yellow and become brittle.
+
+Archival paper is a grade of paper that is designed to last longer than
+ordinary copy paper, and has standardised requirements for acidity levels and
+so on. The [National Archives of Australia][naa-standard] have an even more
+stringent standard for Archival paper and will certify consumer-level archival
+paper if it meets their strict requirements. Though archival paper is quite a
+bit more expensive than copy paper, you can consider it a fairly minor cost (as
+most users won't need more than 50 sheets). If archival paper is too expensive,
+try to find alkaline or acid-free paper (you can ask your state or local
+library if they have any recommendations).
 
 In addition, while using **hot** lamination on a piece of paper may make the
 document more resistant to spills and everyday damage, [the lamination process
@@ -94,9 +95,16 @@ It is recommended that you explain some of the best practices of storing
 backups to the people you've given shard backups to -- as they are the people
 who are in charge of keeping your backups safe and intact.
 
+For even more recommendations (from archivists) about how best to produce and
+store paper documents, the Canadian Conservation Institute [has publicly
+provided very detailed explanations of their best practice
+recommendations][cci-notes]. Unfortunately there aren't as many details given
+about what a *producer* of a document should do.
+
 [naa-standard]: https://web.archive.org/web/20180304061138/https://www.naa.gov.au/information-management/managing-information-and-records/preserving/physical-records-pres/archival-quality-paper-products.aspx
 [anthropology-lamination]: https://web.archive.org/web/20181128202230/http://anthropology.si.edu/conservation/lamination/lamination_guidelines.htm
 [naa-preserving-paper]: https://web.archive.org/web/20180324131805/http://www.naa.gov.au/information-management/managing-information-and-records/preserving/artworks.aspx
+[cci-notes]: https://www.canada.ca/en/conservation-institute/services/conservation-preservation-publications/canadian-conservation-institute-notes.html
 
 ### License ###
 
