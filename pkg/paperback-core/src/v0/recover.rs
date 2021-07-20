@@ -174,7 +174,7 @@ impl UntrustedQuorum {
                 },
                 Type::KeyShard(shard) | Type::ForgedKeyShard(shard) => GroupId {
                     version: shard.inner.version,
-                    doc_chksum: shard.inner.doc_chksum,
+                    doc_chksum: shard.document_checksum(),
                     quorum_size: shard.inner.shard.threshold(),
                     id_public_key: HashablePublicKey(shard.identity.id_public_key),
                 },
@@ -295,7 +295,7 @@ impl Quorum {
             .map(|s| s.inner.shard.clone())
             .collect::<Vec<_>>();
         let secret = ShardSecret::from_wire(shamir::recover_secret(shards)?)
-            .map_err(Error::ShaardSecretDecode)?;
+            .map_err(Error::ShardSecretDecode)?;
 
         // Double-check that the private key agrees with the quorum's public key
         // choice.
@@ -325,8 +325,9 @@ impl Quorum {
             .collect::<Vec<_>>();
 
         // Conduct a complete recovery.
+        // TODO: Cache Dealer::recover.
         let dealer = Dealer::recover(shards)?;
-        let secret = ShardSecret::from_wire(dealer.secret()).map_err(Error::ShaardSecretDecode)?;
+        let secret = ShardSecret::from_wire(dealer.secret()).map_err(Error::ShardSecretDecode)?;
 
         // Get the private key so we can sign the new shards.
         let id_private_key = secret.id_private_key.ok_or(Error::MissingCapability(

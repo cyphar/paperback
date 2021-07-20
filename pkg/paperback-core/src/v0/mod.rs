@@ -67,7 +67,7 @@ pub enum Error {
     Shamir(#[from] ShamirError),
 
     #[error("failed to decode shard secret: {}", .0)]
-    ShaardSecretDecode(String),
+    ShardSecretDecode(String),
 
     #[error("bip39 phrase failure: {}", .0)]
     Bip39(bip39::ErrorKind),
@@ -166,7 +166,7 @@ impl quickcheck::Arbitrary for KeyShardBuilder {
 }
 
 const CODEWORD_LANGUAGE: Language = Language::English;
-pub type KeyShardCodewords = [String; 24];
+pub type KeyShardCodewords = Vec<String>;
 
 #[derive(Clone, Debug)]
 #[cfg_attr(test, derive(PartialEq, Eq))]
@@ -190,7 +190,15 @@ impl KeyShard {
         self.inner.shard.id()
     }
 
-    pub fn encrypt(self) -> Result<(EncryptedKeyShard, KeyShardCodewords), Error> {
+    fn document_checksum(&self) -> Multihash {
+        self.inner.doc_chksum
+    }
+
+    pub fn document_id(&self) -> DocumentId {
+        multihash_short_id(self.document_checksum(), MainDocument::ID_LENGTH)
+    }
+
+    pub fn encrypt(&self) -> Result<(EncryptedKeyShard, KeyShardCodewords), Error> {
         // Serialise.
         let wire_shard = self.to_wire();
 
@@ -210,14 +218,10 @@ impl KeyShard {
         let phrase = Mnemonic::from_entropy(&shard_key, CODEWORD_LANGUAGE)
             .map_err(Error::from)? // XXX: Ugly, fix this.
             .into_phrase();
-        let mut codewords = KeyShardCodewords::default();
-        codewords.clone_from_slice(
-            phrase
-                .split_whitespace()
-                .map(|s| s.to_owned())
-                .collect::<Vec<_>>()
-                .as_slice(),
-        );
+        let codewords = phrase
+            .split_whitespace()
+            .map(|s| s.to_owned())
+            .collect::<Vec<_>>();
 
         // Create wrapper shard.
         let shard = EncryptedKeyShard {
@@ -237,9 +241,9 @@ pub struct EncryptedKeyShard {
 }
 
 impl EncryptedKeyShard {
-    pub fn decrypt(self, codewords: &KeyShardCodewords) -> Result<KeyShard, String> {
+    pub fn decrypt<A: AsRef<[String]>>(&self, codewords: A) -> Result<KeyShard, String> {
         // Convert BIP-39 mnemonic to a key.
-        let phrase = codewords[..].join(" ").to_lowercase();
+        let phrase = codewords.as_ref().join(" ").to_lowercase();
         let mnemonic =
             Mnemonic::from_phrase(&phrase, CODEWORD_LANGUAGE).map_err(|e| format!("{:?}", e))?; // XXX: Ugly, fix this.
 
@@ -347,6 +351,15 @@ pub struct MainDocument {
     identity: Identity,
 }
 
+fn multihash_short_id(hash: Multihash, length: usize) -> String {
+    let doc_chksum = hash.to_bytes();
+    let encoded_chksum = zbase32::encode_full_bytes(&doc_chksum);
+    // The *suffix* is the ID.
+    let short_id = &encoded_chksum[encoded_chksum.len() - length..];
+
+    short_id.to_string()
+}
+
 impl MainDocument {
     pub const ID_LENGTH: usize = 8;
 
@@ -355,12 +368,7 @@ impl MainDocument {
     }
 
     pub fn id(&self) -> DocumentId {
-        let doc_chksum = self.checksum().to_bytes();
-        let encoded_chksum = zbase32::encode_full_bytes(&doc_chksum);
-        // The *suffix* is the ID.
-        let short_id = &encoded_chksum[encoded_chksum.len() - Self::ID_LENGTH..];
-
-        short_id.to_string()
+        multihash_short_id(self.checksum(), Self::ID_LENGTH)
     }
 
     pub fn quorum_size(&self) -> u32 {
