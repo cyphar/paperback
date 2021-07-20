@@ -413,14 +413,14 @@ mod test {
 
         // Go through a round-trip through serialisation.
         let main_document = {
-            let bytes = main_document.to_wire();
-            MainDocument::from_wire(bytes).unwrap()
+            let zbase32_bytes = main_document.to_wire_zbase32();
+            MainDocument::from_wire_zbase32(zbase32_bytes).unwrap()
         };
         let shards = shards
             .iter()
             .map(|(shard, codewords)| {
-                let bytes = shard.to_wire();
-                let shard = EncryptedKeyShard::from_wire(bytes).unwrap();
+                let zbase32_bytes = shard.to_wire_zbase32();
+                let shard = EncryptedKeyShard::from_wire_zbase32(zbase32_bytes).unwrap();
                 (shard, codewords)
             })
             .collect::<Vec<_>>();
