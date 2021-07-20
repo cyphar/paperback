@@ -42,5 +42,10 @@ members = [
 [dependencies]
 "paperback-core" = { path = "pkg/paperback-core" }
 
+clap = "^2"
+anyhow = "^1"
+zbase32 = "^0.1"
+
 [patch.crates-io]
+# See <https://github.com/paritytech/unsigned-varint/pull/54>.
 unsigned-varint = { git = "https://github.com/cyphar/unsigned-varint", branch = "nom6-errors" }
