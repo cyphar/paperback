@@ -88,10 +88,7 @@ fn raw_backup(matches: &ArgMatches<'_>) -> Result<(), Error> {
 
     println!("----- BEGIN MAIN DOCUMENT -----");
     println!("Document-ID: {}", main_document.id());
-    println!(
-        "Checksum: {}",
-        zbase32::encode_full_bytes(&main_document.checksum().to_bytes())
-    );
+    println!("Checksum: {}", main_document.checksum_string());
     println!("\n{}", main_document.to_wire_zbase32());
     println!("----- END MAIN DOCUMENT -----");
 
@@ -145,6 +142,9 @@ fn raw_restore(matches: &ArgMatches<'_>) -> Result<(), Error> {
     )
     .map_err(|err| anyhow!(err)) // TODO: Fix this once FromWire supports non-String errors.
     .context("decode main document")?;
+
+    println!("Document ID: {}", main_document.id());
+    println!("Document Checksum: {}", main_document.checksum_string());
 
     let mut quorum = UntrustedQuorum::new();
     quorum.main_document(main_document);

@@ -367,6 +367,11 @@ impl MainDocument {
         CHECKSUM_ALGORITHM.digest(&self.to_wire())
     }
 
+    pub fn checksum_string(&self) -> String {
+        // TODO: Switch to <https://docs.rs/multibase>.
+        to_multibase_zbase32(self.checksum().to_bytes())
+    }
+
     pub fn id(&self) -> DocumentId {
         multihash_short_id(self.checksum(), Self::ID_LENGTH)
     }

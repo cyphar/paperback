@@ -61,14 +61,20 @@ pub(crate) mod prefixes {
 
 // TODO: Switch the errors from String to a proper thiserror error type.
 
+// TODO: Switch to <https://docs.rs/multibase>.
+pub(crate) fn to_multibase_zbase32<D: AsRef<[u8]>>(data: D) -> String {
+    let mut encoded = String::from(prefixes::MULTIBASE_PREFIX_ZBASE32);
+    encoded.push_str(&zbase32::encode_full_bytes(data.as_ref()));
+    encoded
+}
+
 pub trait ToWire {
     fn to_wire(&self) -> Vec<u8>;
 
     /// Convert a `ToWire`-implementing type to a zbase32 string.
     fn to_wire_zbase32(&self) -> String {
         // TODO: Switch to <https://docs.rs/multibase>.
-        let wire_zbase32 = zbase32::encode_full_bytes(&self.to_wire());
-        format!("{}{}", prefixes::MULTIBASE_PREFIX_ZBASE32, wire_zbase32)
+        to_multibase_zbase32(self.to_wire())
     }
 }
 
