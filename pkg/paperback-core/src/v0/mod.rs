@@ -448,6 +448,100 @@ mod test {
         TestResult::from_bool(recovered_secret == secret)
     }
 
+    fn inner_paperback_expand_smoke<S: AsRef<[u8]>>(quorum_size: u32, secret: S) -> bool {
+        // Construct a backup.
+        let backup = Backup::new(quorum_size.into(), secret.as_ref()).unwrap();
+        let main_document = backup.main_document().clone();
+        let shards = (0..quorum_size)
+            .map(|_| backup.next_shard().unwrap())
+            .map(|s| s.encrypt().unwrap())
+            .collect::<Vec<_>>();
+
+        // Go through a round-trip through serialisation.
+        let main_document = {
+            let zbase32_bytes = main_document.to_wire_zbase32();
+            MainDocument::from_wire_zbase32(zbase32_bytes).unwrap()
+        };
+        let shards = shards
+            .iter()
+            .map(|(shard, codewords)| {
+                let zbase32_bytes = shard.to_wire_zbase32();
+                let shard = EncryptedKeyShard::from_wire_zbase32(zbase32_bytes).unwrap();
+                (shard, codewords.clone())
+            })
+            .collect::<Vec<_>>();
+
+        // Construct a quorum *without the main_document*.
+        let mut quorum = UntrustedQuorum::new();
+        for (shard, codewords) in shards.iter() {
+            let shard = shard.decrypt(codewords).unwrap();
+            quorum.push_shard(shard.clone());
+        }
+        let quorum = quorum.validate().unwrap();
+
+        // Secret recovery should fail.
+        let _ = quorum.recover_document().unwrap_err();
+
+        // But we can expand it -- take the shards through a round-trip.
+        let new_shards = quorum
+            .extend_shards(quorum_size.into())
+            .unwrap()
+            .iter()
+            .map(|s| s.encrypt().unwrap())
+            .map(|(shard, codewords)| {
+                let zbase32_bytes = shard.to_wire_zbase32();
+                let shard = EncryptedKeyShard::from_wire_zbase32(zbase32_bytes).unwrap();
+                (shard, codewords.clone())
+            })
+            .collect::<Vec<_>>();
+        std::mem::drop(quorum); // make sure it's gone
+
+        // Construct a new quorum with the expanded keys!
+        let mut quorum = UntrustedQuorum::new();
+        let take_old: usize = (quorum_size as usize) / 2;
+        let take_new: usize = (quorum_size as usize) - take_old;
+        quorum.main_document(main_document);
+        for (shard, codewords) in shards
+            .iter()
+            .take(take_old)
+            .chain(new_shards.iter().take(take_new))
+        {
+            let shard = shard.decrypt(codewords).unwrap();
+            quorum.push_shard(shard.clone());
+        }
+        let quorum = quorum.validate().unwrap();
+
+        // Recover the secret.
+        let recovered_secret = quorum.recover_document().unwrap();
+
+        recovered_secret == secret.as_ref()
+    }
+
+    macro_rules! paperback_expand_test {
+        ($func:ident, $quorum_size:expr) => {
+            #[test]
+            fn $func() {
+                let mut secret = [0; 1024];
+                rand::thread_rng().fill_bytes(&mut secret[..]);
+                assert!(inner_paperback_expand_smoke($quorum_size, secret))
+            }
+        };
+    }
+
+    // TODO: Switch to quickcheck -- currently this takes too long.
+    paperback_expand_test!(paperback_expand_smoke_2, 2);
+    paperback_expand_test!(paperback_expand_smoke_3, 3);
+    paperback_expand_test!(paperback_expand_smoke_4, 4);
+    paperback_expand_test!(paperback_expand_smoke_5, 5);
+    paperback_expand_test!(paperback_expand_smoke_6, 6);
+    paperback_expand_test!(paperback_expand_smoke_7, 7);
+    paperback_expand_test!(paperback_expand_smoke_8, 8);
+    paperback_expand_test!(paperback_expand_smoke_9, 9);
+    paperback_expand_test!(paperback_expand_smoke_10, 10);
+    paperback_expand_test!(paperback_expand_smoke_11, 11);
+    paperback_expand_test!(paperback_expand_smoke_12, 12);
+    paperback_expand_test!(paperback_expand_smoke_13, 13);
+
     #[quickcheck]
     fn key_shard_encryption_roundtrip(shard: KeyShard) {
         let (enc_shard, codewords) = shard.clone().encrypt().unwrap();

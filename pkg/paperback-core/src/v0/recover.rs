@@ -223,14 +223,10 @@ impl UntrustedQuorum {
             .filter_map(Type::main_document)
             .collect::<Vec<_>>()[..]
         {
-            [main_document] => main_document.clone(),
-            // No main documents.
-            [] => {
-                return Err(InconsistentQuorumError {
-                    message: "no main document specified".into(),
-                    groups: Grouping(groups),
-                });
-            }
+            // Main document present.
+            [main_document] => Some(main_document.clone()),
+            // No main document.
+            [] => None,
             // Nore than one main document.
             _ => {
                 return Err(InconsistentQuorumError {
@@ -247,31 +243,73 @@ impl UntrustedQuorum {
             .cloned()
             .collect::<Vec<_>>();
 
-        // TODO: Sanity-check the shards completely.
-        assert_eq!(shards.len(), self.untrusted_shards.len());
-
-        // XXX: Should probably support having more shards than needed, and have
-        //      them act as a double-check operation.
-        if main_document.quorum_size() as usize != shards.len() {
+        // Collect the Quorum's id_public_key and doc_chksum, then double-check
+        // the values match everything else. If we have no main document, just
+        // use the first shard's values.
+        let (version, id_public_key, doc_chksum) = if let Some(ref main_document) = main_document {
+            (
+                main_document.inner.meta.version,
+                main_document.identity.id_public_key,
+                main_document.checksum(),
+            )
+        } else if let Some(shard) = shards.iter().next() {
+            (
+                shard.inner.version,
+                shard.identity.id_public_key,
+                shard.document_checksum(),
+            )
+        } else {
             return Err(InconsistentQuorumError {
-                message: format!(
-                    "quorum size required is {} but had {} shards",
-                    main_document.quorum_size(),
-                    shards.len()
-                ),
+                message: "[internal error] no main documents or shards present in quorum"
+                    .to_string(),
                 groups: Grouping(groups),
             });
-        }
+        };
 
-        // TODO: Add a sanity-check for these values.
-        let id_public_key = main_document.identity.id_public_key;
-        let doc_chksum = main_document.checksum();
+        assert_eq!(shards.len(), self.untrusted_shards.len());
+        // TODO: Maybe make a trait for this -- QuorumVerifiable?
+        if let Some(ref main_document) = main_document {
+            // XXX: Should probably support having more shards than needed, and have
+            //      them act as a double-check operation.
+            if main_document.quorum_size() as usize != shards.len() {
+                return Err(InconsistentQuorumError {
+                    message: format!(
+                        "quorum size required is {} but had {} shards",
+                        main_document.quorum_size(),
+                        shards.len()
+                    ),
+                    groups: Grouping(groups),
+                });
+            }
+
+            if main_document.checksum() != doc_chksum
+                || main_document.identity.id_public_key != id_public_key
+                || main_document.inner.meta.version != version
+            {
+                return Err(InconsistentQuorumError {
+                    message: "main document has inconsistent identity".to_string(),
+                    groups: Grouping(groups),
+                });
+            }
+        }
+        for shard in shards.iter() {
+            if shard.document_checksum() != doc_chksum
+                || shard.identity.id_public_key != id_public_key
+                || shard.inner.version != version
+            {
+                return Err(InconsistentQuorumError {
+                    message: "shard has inconsistent identity".to_string(),
+                    groups: Grouping(groups),
+                });
+            }
+        }
 
         Ok(Quorum {
             main_document,
             shards,
             // All shards must have agreed on these properties -- otherwise the
             // grouping checks above would've caused an error.
+            version,
             id_public_key,
             doc_chksum,
         })
@@ -280,15 +318,23 @@ impl UntrustedQuorum {
 
 #[derive(Debug, Clone)]
 pub struct Quorum {
-    main_document: MainDocument,
+    main_document: Option<MainDocument>,
     shards: Vec<KeyShard>,
     // Cached consensus information.
+    version: u32,
     id_public_key: PublicKey,
     doc_chksum: Multihash,
 }
 
 impl Quorum {
+    pub fn has_main_document(&self) -> bool {
+        self.main_document.is_some()
+    }
+
     pub fn recover_document(&self) -> Result<Vec<u8>, Error> {
+        let main_document = self.main_document.clone().ok_or(Error::MissingCapability(
+            "no main document in quorum -- cannot recover",
+        ))?;
         let shards = self
             .shards
             .iter()
@@ -310,10 +356,10 @@ impl Quorum {
         // Decrypt the contents.
         let aead = ChaCha20Poly1305::new(&secret.doc_key);
         let payload = Payload {
-            msg: &self.main_document.inner.ciphertext,
-            aad: &self.main_document.inner.meta.aad(&self.id_public_key),
+            msg: &main_document.inner.ciphertext,
+            aad: &main_document.inner.meta.aad(&self.id_public_key),
         };
-        aead.decrypt(&self.main_document.inner.nonce, payload)
+        aead.decrypt(&main_document.inner.nonce, payload)
             .map_err(Error::AeadDecryption)
     }
 
@@ -352,7 +398,7 @@ impl Quorum {
         Ok((0..n)
             .map(|_| {
                 KeyShardBuilder {
-                    version: self.main_document.inner.meta.version,
+                    version: self.version,
                     doc_chksum: self.doc_chksum,
                     shard: dealer.next_shard(),
                 }

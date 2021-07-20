@@ -95,6 +95,9 @@ impl Backup {
         })
     }
 
+    // TODO: Implement this as a BackupBuilder rather than two builder init
+    //       functions.
+
     pub fn new<B: AsRef<[u8]>>(quorum_size: u32, secret: B) -> Result<Self, Error> {
         Self::inner_new(quorum_size, secret.as_ref(), false)
     }

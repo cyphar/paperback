@@ -50,4 +50,5 @@ quickcheck = "^1"
 quickcheck_macros = "^1"
 
 [patch.crates-io]
+# See <https://github.com/paritytech/unsigned-varint/pull/54>.
 unsigned-varint = { git = "https://github.com/cyphar/unsigned-varint", branch = "nom6-errors" }
