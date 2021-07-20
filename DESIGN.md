@@ -335,7 +335,12 @@ Shamir Secret Sharing.
 
 However, users can disable this feature by creating a "sealed document", where
 `K_id_priv` is deleted after the initial backup and thus no new shards can be
-signed with that key.
+signed with that key. Note that this only restricts new shards from being
+accepted as "valid" when the document is being recovered -- mathematically, the
+new shards can still be used to recover the secret (the sealing feature is
+intended to ensure that during recovery, such shards would be detected as not
+being original -- whether that is useful depends on what application paperback
+is being used in).
 
 The process for verifying the shards is very similar to the recovery scenario,
 except that the shard metadata is compared with other shards rather than
