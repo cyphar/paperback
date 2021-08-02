@@ -50,6 +50,12 @@ cannot use the "master key" as they do not have the "master document"). We
 recommend laminating all of the relevant documents, and printing them duplex
 (with each page containing the same page on both sides).
 
+Note that this design can be used in a more "centralised" fashion (for instance
+by giving several lawyers from disparate law firms each an individual key
+shard, with the intention to protect against attacks against an individual law
+firm). Paperback doesn't have a strong opinion on who would be good key shard
+holders, that decision is up to you based on your own risk assessment.
+
 A full description of the cryptographic design and threat model is provided [in
 the included design document][design].
 
