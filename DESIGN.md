@@ -56,31 +56,11 @@ paperback.
 
 Paperback must be able to detect if malicious quorum members have produced fake
 key shards or fake documents. It must not allow fewer than `N` people to
-recover the secret. It also should protect against `N` people creating a fake
-document that other (honest) key-holders then cannot detect is a fake document.
-However, in order for this detection to work, the honest key-holder must be
-confident that their key shard has not been modified or replaced with a forged
-copy (by a malicious quorum).
-
-We assume that in a quorum with `n < N` malicious key-holders (who were able at
-some point to form a quorum and thus produce forged key shards), at least one
-of the honest key-holders in the quorum is confident that their own key shard
-has not been replaced with a forgery. This is a necessary assumption for it to
-
-Paperback's detection of  must We assume that
-If more than `N`
-Even with `n >= N` malicious key-holders being able to form a quorum, we assume
-that at least `K-(N-1)` honest key-holders are confident that their key shard
-is not a forgery and has not been replaced with a forgery from a malicious
-quorum member. Without this assumption, it would be impossible to protect
-against anyone replacing the key shard with a key shard for a completely
-different document -- completely negating the security of the scheme.
-Key-holders should be chosen specifically so that a single adversary cannot
-replace more than `N-1` key shards. As above, additional honest key-holders
-(which do not have forged key shards) must be able to detect that the final
-document is a forgery, but this is not a substitute for a guarantee that such
-forgeries will always be detected if an honest key-holder is a member of the
-quorum (as this assumption ensures).
+recover the secret. It also should protect against `N` or more malicious
+key-holders creating a fake document that other (honest) key-holders then
+cannot detect is a fake document. However, in order for this detection to work,
+at least one honest key-holder must be confident that their key shard has not
+been modified or replaced with a forged copy (by a malicious quorum).
 
 ### Design ###
 
@@ -139,7 +119,11 @@ function are as follows:
 `Secret_Share`, `Secret_Recover`, and `Secret_Expand` are implemented using
 [Shamir Secret Sharing][sss] in `GF(2^32)` (to allow for smaller chances of
 shard collisions if the x-values are randomly chosen -- but a larger field such
-as `GF(2^64)` would be even better).
+as `GF(2^64)` would be even better). At the moment, `Secret_Recover` and
+`Secret_Expand` are implemented using Langrange polynomial interpolation, but
+more efficient methods (the barycentric form of the Lagrange polynomials,
+Vangermonde matricies, Sylvester's formula, Neville's algorithm) that provide
+the same security guarantees (and accurate results) are also acceptable.
 
 `AEAD_GenKey` and `Sig_GenPrivKey` are both implemented using the relevant
 secure randomness source provided by the operating system (depending on the
@@ -481,18 +465,29 @@ It is often necessary to split the data stored in [QR codes][qrcode-iso]. The
 primary reason is that the main document can have a very large data segment and
 many phone QR code scanners do not like QR codes with large segments (failure
 to scan, or scanning a portion of the QR code as a barcode are very common
-failure modes). As such we need to include a serialisation for each chunk of
-data being encoded. For each chunk of the data (`chunk-bytes`), the following
-serialisation format is used:
+failure modes). In addition, QR codes also have an upper limit regardless of
+whether the user could scan such large codes. As such we need to include a
+serialisation for each chunk of data being encoded. For each chunk of the data
+(`chunk-bytes`), the following serialisation format is used:
 
 ```
-"Pb" [ version ] [ nth-chunk ] [ N-chunks ] [ chunk-bytes... ]
+"Pb" [ version ] [ what ] [ nth-chunk ] [ N-chunks ] [ chunk-bytes... ]
 ```
 
  * `"Pb"` is represented as ASCII, with the bytes `{0x50 0x62}`.
  * `version` is the version of the paperback schema being used, represented as
    an [unsigned varint][unsigned-varint].
- * `nth-chunk` is the `1`-indexed index of the current chunk, represented as an
+ * `what` is a single-byte indicator of what data the QR code pertains to. If a
+   scanner is expecting a different kind of data to the kind which is scanned,
+   it should warn the user and not use the scanned data. The following bytes
+   are defined:
+   | Byte   | ASCII | Description             |
+   |:-------|:-----:|:------------------------|
+   | `0x44` | `D`   | Main document data.     |
+   | `0x43` | `C`   | Main document checksum. |
+   | `0x64` | `d`   | Key shard data.         |
+   | `0x63` | `c`   | Key shard checksum.     |
+ * `nth-chunk` is the `0`-indexed index of the current chunk, represented as an
    [unsigned varint][unsigned-varint].
  * `N-chunks` is the number of data chunks that need to be scanned, represented
    as an [unsigned varint][unsigned-varint].
