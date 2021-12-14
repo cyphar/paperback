@@ -116,7 +116,7 @@ impl Hash for HashablePublicKey {
 
 #[derive(Debug)]
 pub struct InconsistentQuorumError {
-    message: String, // TODO: Switch to an Error...
+    pub message: String, // TODO: Switch to an Error...
     groups: Grouping,
 }
 

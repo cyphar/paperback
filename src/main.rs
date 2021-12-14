@@ -262,7 +262,7 @@ fn raw_expand(matches: &ArgMatches<'_>) -> Result<(), Error> {
 
     for (i, (shard, keyword)) in new_shards.iter().enumerate() {
         let decrypted_shard = shard.clone().decrypt(keyword).unwrap();
-        println!("----- BEGIN SHARD {} OF {} -----", i, num_new_shards);
+        println!("----- BEGIN SHARD {} OF {} -----", i + 1, num_new_shards);
         println!("Document-ID: {}", decrypted_shard.document_id());
         println!("Shard-ID: {}", decrypted_shard.id());
         println!("Keywords: {}", keyword.join(" "));

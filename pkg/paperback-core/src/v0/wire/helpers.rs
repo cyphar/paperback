@@ -31,7 +31,6 @@ use nom::{
     sequence::tuple,
     Err as NomErr, IResult, Needed,
 };
-use signature::Signature as SignatureTrait;
 use unsigned_varint::nom as varuint_nom;
 
 pub(super) fn multihash(input: &[u8]) -> IResult<&[u8], Multihash> {
