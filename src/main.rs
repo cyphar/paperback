@@ -16,11 +16,6 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#[macro_use]
-extern crate anyhow;
-extern crate clap;
-extern crate zbase32;
-
 use std::{
     error::Error as StdError,
     fs::File,
@@ -28,11 +23,13 @@ use std::{
     io::{prelude::*, BufReader},
 };
 
-use anyhow::{Context, Error};
+use anyhow::{anyhow, Context, Error};
 use clap::{App, Arg, ArgMatches, SubCommand};
 
 extern crate paperback_core;
 use paperback_core::latest as paperback;
+
+const ENCODING_BASE: multibase::Base = multibase::Base::Base32Z;
 
 fn raw_backup(matches: &ArgMatches<'_>) -> Result<(), Error> {
     use paperback::{Backup, ToWire};
@@ -89,7 +86,7 @@ fn raw_backup(matches: &ArgMatches<'_>) -> Result<(), Error> {
     println!("----- BEGIN MAIN DOCUMENT -----");
     println!("Document-ID: {}", main_document.id());
     println!("Checksum: {}", main_document.checksum_string());
-    println!("\n{}", main_document.to_wire_zbase32());
+    println!("\n{}", main_document.to_wire_multibase(ENCODING_BASE));
     println!("----- END MAIN DOCUMENT -----");
 
     for (i, (shard, keyword)) in shards.iter().enumerate() {
@@ -98,7 +95,7 @@ fn raw_backup(matches: &ArgMatches<'_>) -> Result<(), Error> {
         println!("Document-ID: {}", decrypted_shard.document_id());
         println!("Shard-ID: {}", decrypted_shard.id());
         println!("Keywords: {}", keyword.join(" "));
-        println!("\n{}", shard.to_wire_zbase32());
+        println!("\n{}", shard.to_wire_multibase(ENCODING_BASE));
         println!("----- END SHARD {} OF {} -----", i, quorum_size);
     }
 
@@ -136,7 +133,7 @@ fn raw_restore(matches: &ArgMatches<'_>) -> Result<(), Error> {
         .value_of("OUTPUT")
         .expect("required OUTPUT argument not given");
 
-    let main_document = MainDocument::from_wire_zbase32(
+    let main_document = MainDocument::from_wire_multibase(
         read_oneline_file("Main Document Data", main_document_path)
             .context("open main document")?,
     )
@@ -149,7 +146,7 @@ fn raw_restore(matches: &ArgMatches<'_>) -> Result<(), Error> {
     let mut quorum = UntrustedQuorum::new();
     quorum.main_document(main_document);
     for (idx, shard_path) in shard_paths.enumerate() {
-        let encrypted_shard = EncryptedKeyShard::from_wire_zbase32(
+        let encrypted_shard = EncryptedKeyShard::from_wire_multibase(
             read_oneline_file(&format!("Shard {} Data", idx + 1), shard_path)
                 .with_context(|| format!("read shard {}", idx + 1))?,
         )
@@ -218,7 +215,7 @@ fn raw_expand(matches: &ArgMatches<'_>) -> Result<(), Error> {
 
     let mut quorum = UntrustedQuorum::new();
     for (idx, shard_path) in shard_paths.enumerate() {
-        let encrypted_shard = EncryptedKeyShard::from_wire_zbase32(
+        let encrypted_shard = EncryptedKeyShard::from_wire_multibase(
             read_oneline_file(&format!("Shard {} Data", idx + 1), shard_path)
                 .with_context(|| format!("read shard {}", idx + 1))?,
         )
@@ -266,7 +263,7 @@ fn raw_expand(matches: &ArgMatches<'_>) -> Result<(), Error> {
         println!("Document-ID: {}", decrypted_shard.document_id());
         println!("Shard-ID: {}", decrypted_shard.id());
         println!("Keywords: {}", keyword.join(" "));
-        println!("\n{}", shard.to_wire_zbase32());
+        println!("\n{}", shard.to_wire_multibase(ENCODING_BASE));
         println!("----- END SHARD {} OF {} -----", i, num_new_shards);
     }
 

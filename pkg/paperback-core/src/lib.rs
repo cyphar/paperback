@@ -18,17 +18,6 @@
 
 #![forbid(unsafe_code)]
 
-extern crate aead;
-extern crate bip39;
-extern crate chacha20poly1305;
-extern crate ed25519_dalek;
-extern crate itertools;
-extern crate nom;
-extern crate rand;
-extern crate serde;
-extern crate unsigned_varint;
-extern crate zbase32;
-
 #[cfg(test)]
 extern crate quickcheck;
 #[cfg(test)]

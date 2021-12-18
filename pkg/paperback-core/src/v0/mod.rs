@@ -25,7 +25,7 @@ use aead::{generic_array::GenericArray, Aead, AeadCore, NewAead};
 use bip39::{Language, Mnemonic};
 use chacha20poly1305::ChaCha20Poly1305;
 use ed25519_dalek::{Keypair, PublicKey, Signature, Signer};
-use multihash::{Code, Multihash, MultihashDigest};
+use multihash::{Multihash, MultihashDigest};
 use rand::RngCore;
 use unsigned_varint::encode as varuint_encode;
 
@@ -47,7 +47,8 @@ fn check_length_consts() {
     assert_eq!(CHACHAPOLY_NONCE_LENGTH, ChaChaPolyNonce::default().len());
 }
 
-const CHECKSUM_ALGORITHM: Code = Code::Blake2b256;
+const CHECKSUM_ALGORITHM: multihash::Code = multihash::Code::Blake2b256;
+const CHECKSUM_MULTIBASE: multibase::Base = multibase::Base::Base32Z;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -353,7 +354,7 @@ pub struct MainDocument {
 
 fn multihash_short_id(hash: Multihash, length: usize) -> String {
     let doc_chksum = hash.to_bytes();
-    let encoded_chksum = zbase32::encode_full_bytes(&doc_chksum);
+    let encoded_chksum = multibase::encode(multibase::Base::Base32Z, &doc_chksum);
     // The *suffix* is the ID.
     let short_id = &encoded_chksum[encoded_chksum.len() - length..];
 
@@ -368,8 +369,7 @@ impl MainDocument {
     }
 
     pub fn checksum_string(&self) -> String {
-        // TODO: Switch to <https://docs.rs/multibase>.
-        to_multibase_zbase32(self.checksum().to_bytes())
+        CHECKSUM_MULTIBASE.encode(self.checksum().to_bytes())
     }
 
     pub fn id(&self) -> DocumentId {
@@ -402,6 +402,7 @@ pub use backup::*;
 mod test {
     use super::*;
 
+    use multibase::Base;
     use quickcheck::TestResult;
 
     // NOTE: We use u16s and u8s here (and limit the range) because generating
@@ -426,14 +427,14 @@ mod test {
 
         // Go through a round-trip through serialisation.
         let main_document = {
-            let zbase32_bytes = main_document.to_wire_zbase32();
-            MainDocument::from_wire_zbase32(zbase32_bytes).unwrap()
+            let zbase32_bytes = main_document.to_wire_multibase(Base::Base32Z);
+            MainDocument::from_wire_multibase(zbase32_bytes).unwrap()
         };
         let shards = shards
             .iter()
             .map(|(shard, codewords)| {
-                let zbase32_bytes = shard.to_wire_zbase32();
-                let shard = EncryptedKeyShard::from_wire_zbase32(zbase32_bytes).unwrap();
+                let zbase32_bytes = shard.to_wire_multibase(Base::Base32Z);
+                let shard = EncryptedKeyShard::from_wire_multibase(zbase32_bytes).unwrap();
                 (shard, codewords)
             })
             .collect::<Vec<_>>();
@@ -464,14 +465,14 @@ mod test {
 
         // Go through a round-trip through serialisation.
         let main_document = {
-            let zbase32_bytes = main_document.to_wire_zbase32();
-            MainDocument::from_wire_zbase32(zbase32_bytes).unwrap()
+            let zbase32_bytes = main_document.to_wire_multibase(Base::Base32Z);
+            MainDocument::from_wire_multibase(zbase32_bytes).unwrap()
         };
         let shards = shards
             .iter()
             .map(|(shard, codewords)| {
-                let zbase32_bytes = shard.to_wire_zbase32();
-                let shard = EncryptedKeyShard::from_wire_zbase32(zbase32_bytes).unwrap();
+                let zbase32_bytes = shard.to_wire_multibase(Base::Base32Z);
+                let shard = EncryptedKeyShard::from_wire_multibase(zbase32_bytes).unwrap();
                 (shard, codewords.clone())
             })
             .collect::<Vec<_>>();
@@ -494,8 +495,8 @@ mod test {
             .iter()
             .map(|s| s.encrypt().unwrap())
             .map(|(shard, codewords)| {
-                let zbase32_bytes = shard.to_wire_zbase32();
-                let shard = EncryptedKeyShard::from_wire_zbase32(zbase32_bytes).unwrap();
+                let zbase32_bytes = shard.to_wire_multibase(Base::Base32Z);
+                let shard = EncryptedKeyShard::from_wire_multibase(zbase32_bytes).unwrap();
                 (shard, codewords.clone())
             })
             .collect::<Vec<_>>();

@@ -42,8 +42,7 @@ impl Shard {
     /// If two shards have the same identifier, they cannot be used together for
     /// secret recovery.
     pub fn id(&self) -> String {
-        let id = zbase32::encode_full_bytes(&self.x.to_bytes());
-        format!("h{}", id)
+        multibase::encode(multibase::Base::Base32Z, &self.x.to_bytes())
     }
 
     /// Returns the number of *unique* sister `Shard`s required to recover the

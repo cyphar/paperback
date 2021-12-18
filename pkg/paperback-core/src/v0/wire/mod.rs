@@ -21,8 +21,6 @@ mod internal;
 mod key_shard;
 mod main_document;
 
-use zbase32;
-
 pub(crate) mod prefixes {
     // It's easier to read these bytes if they have unconventional groupings.
     #![allow(clippy::unusual_byte_groupings)]
@@ -53,28 +51,16 @@ pub(crate) mod prefixes {
     /// Prefix for a ChaCha20-Poly1305 nonce.
     // NOTE: Entirely our own creation and not remotely upstreamable.
     pub(super) const PREFIX_CHACHA20POLY1305_CIPHERTEXT: u64 = 0xfc_caca20_1305;
-
-    /// Multi-base prefix for zbase32.
-    // TODO: Switch to <https://docs.rs/multibase>.
-    pub(super) const MULTIBASE_PREFIX_ZBASE32: &'static str = "h";
 }
 
 // TODO: Switch the errors from String to a proper thiserror error type.
-
-// TODO: Switch to <https://docs.rs/multibase>.
-pub(crate) fn to_multibase_zbase32<D: AsRef<[u8]>>(data: D) -> String {
-    let mut encoded = String::from(prefixes::MULTIBASE_PREFIX_ZBASE32);
-    encoded.push_str(&zbase32::encode_full_bytes(data.as_ref()));
-    encoded
-}
 
 pub trait ToWire {
     fn to_wire(&self) -> Vec<u8>;
 
     /// Convert a `ToWire`-implementing type to a zbase32 string.
-    fn to_wire_zbase32(&self) -> String {
-        // TODO: Switch to <https://docs.rs/multibase>.
-        to_multibase_zbase32(self.to_wire())
+    fn to_wire_multibase(&self, base: multibase::Base) -> String {
+        base.encode(self.to_wire())
     }
 }
 
@@ -90,15 +76,8 @@ pub trait FromWire: Sized {
 
     /// Parse a zbase32-encoded representation of a `FromWire`-implementing type
     /// as that type.
-    fn from_wire_zbase32<S: AsRef<str>>(input: S) -> Result<Self, String> {
-        // TODO: Switch to <https://docs.rs/multibase>.
-        let input = input.as_ref();
-        match (input.get(0..1), input.get(1..)) {
-            (Some(prefixes::MULTIBASE_PREFIX_ZBASE32), Some(data)) => {
-                let wire_data = zbase32::decode_full_bytes_str(data)?;
-                Self::from_wire(wire_data)
-            }
-            _ => Err("invalid zbase32 string".into()),
-        }
+    fn from_wire_multibase<S: AsRef<str>>(input: S) -> Result<Self, String> {
+        let (_, data) = multibase::decode(input).map_err(|err| format!("{:?}", err))?;
+        Self::from_wire(data)
     }
 }
