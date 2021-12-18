@@ -60,7 +60,7 @@ pub trait ToWire {
 
     /// Convert a `ToWire`-implementing type to a zbase32 string.
     fn to_wire_multibase(&self, base: multibase::Base) -> String {
-        base.encode(self.to_wire())
+        multibase::encode(base, self.to_wire())
     }
 }
 

@@ -32,11 +32,13 @@ use unsigned_varint::encode as varuint_encode;
 pub type ShardId = String;
 pub type DocumentId = String;
 
+const PAPERBACK_VERSION: u32 = 0;
+
 type ChaChaPolyKey = GenericArray<u8, <ChaCha20Poly1305 as NewAead>::KeySize>;
-const CHACHAPOLY_KEY_LENGTH: usize = 32usize;
+const CHACHAPOLY_KEY_LENGTH: usize = 32;
 
 type ChaChaPolyNonce = GenericArray<u8, <ChaCha20Poly1305 as AeadCore>::NonceSize>;
-const CHACHAPOLY_NONCE_LENGTH: usize = 12usize;
+const CHACHAPOLY_NONCE_LENGTH: usize = 12;
 
 #[cfg(test)]
 #[test]
@@ -52,28 +54,28 @@ const CHECKSUM_MULTIBASE: multibase::Base = multibase::Base::Base32Z;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
-    #[error("security invariant violated: {}", .0)]
+    #[error("security invariant violated: {0}")]
     InvariantViolation(&'static str),
 
-    #[error("missing necessary cabibilities to complete request: {}", .0)]
+    #[error("missing necessary cabibilities to complete request: {0}")]
     MissingCapability(&'static str),
 
-    #[error("aead encryption cryptographic error: {}", .0)]
+    #[error("aead encryption cryptographic error: {0}")]
     AeadEncryption(aead::Error),
 
-    #[error("aead decryption cryptographic error: {}", .0)]
+    #[error("aead decryption cryptographic error: {0}")]
     AeadDecryption(aead::Error),
 
-    #[error("shamir algorithm operation: {}", .0)]
+    #[error("shamir algorithm operation: {0}")]
     Shamir(#[from] ShamirError),
 
-    #[error("failed to decode shard secret: {}", .0)]
+    #[error("failed to decode shard secret: {0}")]
     ShardSecretDecode(String),
 
-    #[error("bip39 phrase failure: {}", .0)]
+    #[error("bip39 phrase failure: {0}")]
     Bip39(bip39::ErrorKind),
 
-    #[error("other error: {}", .0)]
+    #[error("other error: {0}")]
     Other(String),
 }
 
@@ -159,7 +161,7 @@ impl quickcheck::Arbitrary for KeyShardBuilder {
     fn arbitrary(g: &mut quickcheck::Gen) -> Self {
         let bytes = Vec::<u8>::arbitrary(g);
         Self {
-            version: 0,
+            version: PAPERBACK_VERSION,
             doc_chksum: CHECKSUM_ALGORITHM.digest(&bytes[..]),
             shard: Shard::arbitrary(g),
         }
@@ -242,6 +244,14 @@ pub struct EncryptedKeyShard {
 }
 
 impl EncryptedKeyShard {
+    pub fn checksum(&self) -> Multihash {
+        CHECKSUM_ALGORITHM.digest(&self.to_wire())
+    }
+
+    pub fn checksum_string(&self) -> String {
+        multibase::encode(CHECKSUM_MULTIBASE, self.checksum().to_bytes())
+    }
+
     pub fn decrypt<A: AsRef<[String]>>(&self, codewords: A) -> Result<KeyShard, String> {
         // Convert BIP-39 mnemonic to a key.
         let phrase = codewords.as_ref().join(" ").to_lowercase();
@@ -295,7 +305,7 @@ impl MainDocumentMeta {
 impl quickcheck::Arbitrary for MainDocumentMeta {
     fn arbitrary(g: &mut quickcheck::Gen) -> Self {
         Self {
-            version: 0,
+            version: PAPERBACK_VERSION,
             quorum_size: u32::arbitrary(g),
         }
     }
@@ -369,7 +379,7 @@ impl MainDocument {
     }
 
     pub fn checksum_string(&self) -> String {
-        CHECKSUM_MULTIBASE.encode(self.checksum().to_bytes())
+        multibase::encode(CHECKSUM_MULTIBASE, self.checksum().to_bytes())
     }
 
     pub fn id(&self) -> DocumentId {
@@ -378,6 +388,10 @@ impl MainDocument {
 
     pub fn quorum_size(&self) -> u32 {
         self.inner.meta.quorum_size
+    }
+
+    pub fn version(&self) -> u32 {
+        self.inner.meta.version
     }
 }
 
@@ -397,6 +411,9 @@ pub use recover::*;
 
 mod backup;
 pub use backup::*;
+
+mod pdf;
+pub use pdf::ToPdf;
 
 #[cfg(test)]
 mod test {

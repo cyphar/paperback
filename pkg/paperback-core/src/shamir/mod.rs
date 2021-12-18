@@ -25,6 +25,6 @@ pub use shard::Shard;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
-    #[error("lagrange interpolation failed: {}", .0)]
+    #[error("lagrange interpolation failed: {0}")]
     LagrangeError(#[from] gf::Error),
 }

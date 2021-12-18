@@ -34,14 +34,16 @@ chacha20poly1305 = "^0.8"
 digest = "^0.9"
 ed25519-dalek = "^1.0.1"
 itertools = "^0.10"
-multihash = "^0.13"
 multibase = "^0.9"
+multihash = "^0.13"
 nom = "^6" # This must match the unsigned-varint version.
 rand = "^0.7" # This must match the ed25519-dalek version.
+printpdf = { version = "^0.5", features = ["svg"] }
+qrcode = "^0.12"
 serde = { version = "^1", features = ["derive"] }
 signature = "^1"
-tiny-bip39 = "^0.8"
 thiserror = "^1"
+tiny-bip39 = "^0.8"
 typenum = "^1"
 unsigned-varint = { version = "^0.7", features = ["nom"] }
 

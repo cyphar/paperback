@@ -20,7 +20,7 @@ use crate::{
     shamir::Dealer,
     v0::{
         ChaChaPolyKey, ChaChaPolyNonce, Error, KeyShard, KeyShardBuilder, MainDocument,
-        MainDocumentBuilder, MainDocumentMeta, ShardSecret, ToWire,
+        MainDocumentBuilder, MainDocumentMeta, ShardSecret, ToWire, PAPERBACK_VERSION,
     },
 };
 
@@ -63,7 +63,7 @@ impl Backup {
 
         // Construct the MainDocument.
         let main_document_meta = MainDocumentMeta {
-            version: 0u32,
+            version: PAPERBACK_VERSION,
             quorum_size,
         };
 

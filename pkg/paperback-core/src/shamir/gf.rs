@@ -27,9 +27,7 @@ use rand::{CryptoRng, RngCore};
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error(
-        "wrong number of points for interpolation: polynomial needs {} but was given {}",
-        needed,
-        num_points
+        "wrong number of points for interpolation: polynomial needs {needed} but was given {num_points}"
     )]
     NumPointsMismatch { needed: usize, num_points: usize },
 

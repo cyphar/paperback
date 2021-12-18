@@ -32,11 +32,10 @@ use unsigned_varint::{encode as varuint_encode, nom as varuint_nom};
 #[doc(hidden)]
 impl ToWire for KeyShardBuilder {
     fn to_wire(&self) -> Vec<u8> {
-        let mut buffer = varuint_encode::u32_buffer();
         let mut bytes = vec![];
 
         // Encode version.
-        varuint_encode::u32(self.version, &mut buffer)
+        varuint_encode::u32(self.version, &mut varuint_encode::u32_buffer())
             .iter()
             .for_each(|b| bytes.push(*b));
 
