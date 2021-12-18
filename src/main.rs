@@ -73,9 +73,9 @@ fn raw_backup(matches: &ArgMatches<'_>) -> Result<(), Error> {
         .with_context(|| format!("failed to read secret data from '{}'", input_path))?;
 
     let backup = if sealed {
-        Backup::new_sealed(quorum_size.into(), &secret)
+        Backup::new_sealed(quorum_size, &secret)
     } else {
-        Backup::new(quorum_size.into(), &secret)
+        Backup::new(quorum_size, &secret)
     }?;
     let main_document = backup.main_document().clone();
     let shards = (0..num_shards)

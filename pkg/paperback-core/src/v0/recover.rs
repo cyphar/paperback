@@ -252,7 +252,7 @@ impl UntrustedQuorum {
                 main_document.identity.id_public_key,
                 main_document.checksum(),
             )
-        } else if let Some(shard) = shards.iter().next() {
+        } else if let Some(shard) = shards.get(0) {
             (
                 shard.inner.version,
                 shard.identity.id_public_key,
