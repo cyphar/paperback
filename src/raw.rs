@@ -93,6 +93,7 @@ fn raw_backup(matches: &ArgMatches<'_>) -> Result<(), Error> {
         println!("----- BEGIN SHARD {} OF {} -----", i + 1, quorum_size);
         println!("Document-ID: {}", decrypted_shard.document_id());
         println!("Shard-ID: {}", decrypted_shard.id());
+        println!("Checksum: {}", shard.checksum_string());
         println!("Keywords: {}", keyword.join(" "));
         println!("\n{}", shard.to_wire_multibase(ENCODING_BASE));
         println!("----- END SHARD {} OF {} -----", i + 1, quorum_size);
@@ -152,6 +153,7 @@ fn raw_restore(matches: &ArgMatches<'_>) -> Result<(), Error> {
         .map_err(|err| anyhow!(err)) // TODO: Fix this once FromWire supports non-String errors.
         .with_context(|| format!("decode shard {}", idx + 1))?;
 
+        println!("Shard Checksum: {}", encrypted_shard.checksum_string());
         print!("Shard {} Codeword: ", idx + 1);
         io::stdout().flush()?;
         let mut codeword_input = String::new();
