@@ -16,17 +16,13 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-// TODO: Implement FromWire for all the bits and write code to make use of
-// Joiner and the other functions.
-#![allow(unused)]
-
 use crate::v0::{
     pdf::{Error, QRCODE_MULTIBASE},
     FromWire, ToWire, PAPERBACK_VERSION,
 };
 
 use qrcode::QrCode;
-use unsigned_varint::{encode as varuint_encode, nom as varuint_nom};
+use unsigned_varint::encode as varuint_encode;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub(super) enum PartType {
@@ -49,13 +45,13 @@ impl ToWire for PartType {
 }
 
 impl FromWire for PartType {
-    fn from_wire_partial(input: &[u8]) -> Result<(Self, &[u8]), String> {
+    fn from_wire_partial(input: &[u8]) -> Result<(&[u8], Self), String> {
         match input.split_first() {
-            Some((b'D', rest)) => Ok((Self::MainDocumentData, rest)),
-            Some((b'C', rest)) => Ok((Self::MainDocumentChecksum, rest)),
-            Some((b'd', rest)) => Ok((Self::KeyShardData, rest)),
-            Some((b'c', rest)) => Ok((Self::KeyShardChecksum, rest)),
-            None => Err("".into()), // TODO: Insufficient
+            Some((b'D', input)) => Ok((input, Self::MainDocumentData)),
+            Some((b'C', input)) => Ok((input, Self::MainDocumentChecksum)),
+            Some((b'd', input)) => Ok((input, Self::KeyShardData)),
+            Some((b'c', input)) => Ok((input, Self::KeyShardChecksum)),
+            None => Err("".into()), // TODO
             Some(_) => Err("".into()),
         }
     }
@@ -92,13 +88,35 @@ impl ToWire for PartMeta {
 }
 
 impl FromWire for PartMeta {
-    fn from_wire_partial(input: &[u8]) -> Result<(Self, &[u8]), String> {
-        todo!();
+    fn from_wire_partial(input: &[u8]) -> Result<(&[u8], Self), String> {
+        use nom::{combinator::complete, IResult};
+        use unsigned_varint::nom as varuint_nom;
+
+        fn parse(input: &[u8]) -> IResult<&[u8], (u32, PartType, usize)> {
+            let (input, version) = varuint_nom::u32(input)?;
+            let (input, data_type) = PartType::from_wire_partial(input).unwrap(); // TODO TODO TODO
+            let (input, num_parts) = varuint_nom::usize(input)?;
+
+            Ok((input, (version, data_type, num_parts)))
+        }
+        let mut parse = complete(parse);
+
+        let (input, (version, data_type, num_parts)) =
+            parse(input).map_err(|err| format!("{:?}", err))?;
+
+        Ok((
+            input,
+            PartMeta {
+                version,
+                data_type,
+                num_parts,
+            },
+        ))
     }
 }
 
 #[derive(Clone, Debug)]
-struct Part {
+pub struct Part {
     meta: PartMeta,
     part_idx: usize,
     data: Vec<u8>,
@@ -126,27 +144,55 @@ impl ToWire for Part {
 }
 
 impl FromWire for Part {
-    fn from_wire_partial(input: &[u8]) -> Result<(Self, &[u8]), String> {
-        todo!();
+    fn from_wire_partial(input: &[u8]) -> Result<(&[u8], Self), String> {
+        use nom::{bytes::streaming::tag, combinator::complete, IResult};
+        use unsigned_varint::nom as varuint_nom;
+
+        fn parse(input: &[u8]) -> IResult<&[u8], (PartMeta, usize, Vec<u8>)> {
+            let (input, _) = tag(b"Pb")(input)?;
+            let (input, meta) = PartMeta::from_wire_partial(input).unwrap(); // TODO TODO TODO
+            let (input, part_idx) = varuint_nom::usize(input)?;
+            // TODO: Is this correct?
+            let (input, data) = (&input[0..0], input.to_vec());
+
+            Ok((input, (meta, part_idx, data)))
+        }
+        let mut parse = complete(parse);
+
+        let (input, (meta, part_idx, data)) = parse(input).map_err(|err| format!("{:?}", err))?;
+
+        Ok((
+            input,
+            Part {
+                meta,
+                part_idx,
+                data,
+            },
+        ))
     }
 }
 
 #[derive(Default, Debug)]
-pub(super) struct Joiner {
+pub struct Joiner {
     meta: Option<PartMeta>,
     parts: Vec<Option<Part>>,
 }
 
 impl Joiner {
-    pub(super) fn new() -> Self {
+    pub fn new() -> Self {
         Self::default()
     }
 
-    pub(super) fn remaining(&self) -> usize {
-        self.parts.iter().filter(|v| v.is_none()).count()
+    pub fn remaining(&self) -> Option<usize> {
+        self.meta
+            .and_then(|_| Some(self.parts.iter().filter(|v| v.is_none()).count()))
     }
 
-    fn add_parsed_part(&mut self, part: Part) -> Result<&mut Self, Error> {
+    pub fn complete(&self) -> bool {
+        self.remaining() == Some(0)
+    }
+
+    pub fn add_part(&mut self, part: Part) -> Result<&mut Self, Error> {
         if let Some(meta) = self.meta {
             if meta != part.meta || part.part_idx >= meta.num_parts {
                 return Err(Error::MismatchedQrCode);
@@ -168,12 +214,12 @@ impl Joiner {
         Ok(self)
     }
 
-    pub(super) fn add_qr_part<B: AsRef<str>>(&mut self, qr_data: B) -> Result<&mut Self, Error> {
+    pub fn add_qr_part<B: AsRef<str>>(&mut self, qr_data: B) -> Result<&mut Self, Error> {
         let part = Part::from_wire_multibase(qr_data.as_ref()).map_err(Error::ParseQrData)?;
-        self.add_parsed_part(part)
+        self.add_part(part)
     }
 
-    pub(super) fn combine_parts(&self) -> Result<Vec<u8>, Error> {
+    pub fn combine_parts(&self) -> Result<Vec<u8>, Error> {
         let mut data_len = 0usize;
         for (idx, part) in self.parts.iter().enumerate() {
             if let Some(part) = part {
@@ -198,7 +244,8 @@ const DATA_OVERHEAD: usize = 1 /* multibase header */ +
                              2 * 9 /* 2*varuint length and index */;
 
 // TODO: Make this dynamic based on the error correction mode.
-const MAX_DATA_LENGTH: usize = 926 - DATA_OVERHEAD;
+//const MAX_DATA_LENGTH: usize = 926 - DATA_OVERHEAD;
+const MAX_DATA_LENGTH: usize = 626 - DATA_OVERHEAD;
 
 fn split_data<B: AsRef<[u8]>>(data_type: PartType, data: B) -> Vec<Part> {
     let data = data.as_ref();
@@ -221,27 +268,32 @@ fn split_data<B: AsRef<[u8]>>(data_type: PartType, data: B) -> Vec<Part> {
 pub(super) fn generate_codes<B: AsRef<[u8]>>(
     data_type: PartType,
     data: B,
-) -> Result<Vec<QrCode>, Error> {
-    Ok(split_data(data_type, data)
+) -> Result<(Vec<QrCode>, Vec<Vec<u8>>), Error> {
+    let codes = split_data(data_type, data)
         .iter()
-        .map(|part| QrCode::new(part.to_wire_multibase(QRCODE_MULTIBASE)))
-        .collect::<Result<Vec<_>, _>>()?)
+        .map(ToWire::to_wire)
+        .collect::<Vec<_>>();
+    Ok((
+        codes
+            .iter()
+            .map(|data| multibase::encode(QRCODE_MULTIBASE, data))
+            .map(QrCode::new)
+            .collect::<Result<Vec<_>, _>>()?,
+        codes,
+    ))
 }
 
 pub(super) fn generate_one_code<B: AsRef<[u8]>>(
-    data_type: PartType,
+    _data_type: PartType, // TODO
     data: B,
-) -> Result<QrCode, Error> {
-    Ok(QrCode::new(
-        Part {
-            meta: PartMeta {
-                version: PAPERBACK_VERSION,
-                data_type: data_type,
-                num_parts: 1,
-            },
-            part_idx: 0,
-            data: data.as_ref().into(),
-        }
-        .to_wire_multibase(QRCODE_MULTIBASE),
-    )?)
+) -> Result<(QrCode, Vec<u8>), Error> {
+    // NOTE: We don't use a split code for single-QR-code data segments. The
+    // reason for this is that the part header takes up space, and it also
+    // causes checksums to be encoded differently (meaning that the document ID
+    // would no longer be the last x characters of the hash).
+    let data = data.as_ref();
+    Ok((
+        QrCode::new(multibase::encode(QRCODE_MULTIBASE, data))?,
+        data.to_vec(),
+    ))
 }

@@ -85,7 +85,7 @@ impl ToWire for Shard {
 }
 
 impl FromWire for Shard {
-    fn from_wire_partial(input: &[u8]) -> Result<(Self, &[u8]), String> {
+    fn from_wire_partial(input: &[u8]) -> Result<(&[u8], Self), String> {
         use nom::{combinator::complete, multi::many_m_n, IResult};
 
         fn parse(input: &[u8]) -> IResult<&[u8], Shard> {
@@ -115,9 +115,9 @@ impl FromWire for Shard {
         }
         let mut parse = complete(parse);
 
-        let (remain, shard) = parse(input).map_err(|err| format!("{:?}", err))?;
+        let (input, shard) = parse(input).map_err(|err| format!("{:?}", err))?;
 
-        Ok((shard, remain))
+        Ok((input, shard))
     }
 }
 

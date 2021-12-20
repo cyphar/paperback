@@ -16,8 +16,8 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-mod pdf;
-mod qr;
+pub mod pdf;
+pub mod qr;
 
 pub use pdf::ToPdf;
 
@@ -31,6 +31,9 @@ pub enum Error {
 
     #[error("qr code created using unsupported paperback version {version}")]
     WrongPaperbackVersion { version: u32 },
+
+    #[error("failed to parse raw encoded data: {0}")]
+    ParseRawData(String),
 
     #[error("qr code data parsing error: {0}")]
     ParseQrData(String),

@@ -403,16 +403,16 @@ impl quickcheck::Arbitrary for MainDocument {
     }
 }
 
-mod wire;
-pub use wire::*;
+pub mod wire;
+pub use wire::{FromWire, ToWire};
 
-mod recover;
+pub mod recover;
 pub use recover::*;
 
-mod backup;
+pub mod backup;
 pub use backup::*;
 
-mod pdf;
+pub mod pdf;
 pub use pdf::ToPdf;
 
 #[cfg(test)]

@@ -53,6 +53,25 @@ pub(crate) mod prefixes {
     pub(super) const PREFIX_CHACHA20POLY1305_CIPHERTEXT: u64 = 0xfc_caca20_1305;
 }
 
+pub fn multibase_strip<S: AsRef<str>>(data: S) -> Result<String, String> {
+    let data = data.as_ref();
+    match data.chars().next() {
+        // TODO: Probably we should just retain valid characters in the code.
+        // But multibase doesn't expose this currently.
+        Some(ch) => Ok(data.replace(
+            match multibase::Base::from_code(ch) {
+                Ok(multibase::Base::Base64Url) | Ok(multibase::Base::Base64UrlPad) => {
+                    &['\t', ' ', '\n'][..]
+                } // url-base64 -- do not remove "-"
+                Ok(_) => &['\t', ' ', '\n', '-'][..], // url-base64 -- do not remove "-"
+                Err(err) => return Err(format!("error parsing multibase string: {}", err)),
+            },
+            "",
+        )),
+        None => Err("error parsing multibase string: empty string".to_string()),
+    }
+}
+
 // TODO: Switch the errors from String to a proper thiserror error type.
 
 pub trait ToWire {
@@ -65,11 +84,11 @@ pub trait ToWire {
 }
 
 pub trait FromWire: Sized {
-    fn from_wire_partial(input: &[u8]) -> Result<(Self, &[u8]), String>;
+    fn from_wire_partial(input: &[u8]) -> Result<(&[u8], Self), String>;
 
     fn from_wire<B: AsRef<[u8]>>(input: B) -> Result<Self, String> {
         match Self::from_wire_partial(input.as_ref())? {
-            (ret, []) => Ok(ret),
+            ([], ret) => Ok(ret),
             _ => Err("trailing bytes left after deseralisation".into()),
         }
     }

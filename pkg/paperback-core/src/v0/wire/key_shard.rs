@@ -55,7 +55,7 @@ impl ToWire for KeyShardBuilder {
 // Internal only -- users can't see KeyShardBuilder.
 #[doc(hidden)]
 impl FromWire for KeyShardBuilder {
-    fn from_wire_partial(input: &[u8]) -> Result<(Self, &[u8]), String> {
+    fn from_wire_partial(input: &[u8]) -> Result<(&[u8], Self), String> {
         use crate::v0::wire::helpers::multihash;
         use nom::{combinator::complete, IResult};
 
@@ -68,15 +68,15 @@ impl FromWire for KeyShardBuilder {
         let mut parse = complete(parse);
 
         let (input, (version, doc_chksum)) = parse(input).map_err(|err| format!("{:?}", err))?;
-        let (shard, remain) = Shard::from_wire_partial(input)?;
+        let (input, shard) = Shard::from_wire_partial(input)?;
 
         Ok((
+            input,
             KeyShardBuilder {
                 version,
                 doc_chksum,
                 shard,
             },
-            remain,
         ))
     }
 }
@@ -97,9 +97,9 @@ impl ToWire for KeyShard {
 /// Internal only -- users should use EncryptedKeyShard's FromWire.
 #[doc(hidden)]
 impl FromWire for KeyShard {
-    fn from_wire_partial(input: &[u8]) -> Result<(Self, &[u8]), String> {
-        let (inner, input) = KeyShardBuilder::from_wire_partial(input)?;
-        let (identity, input) = Identity::from_wire_partial(input)?;
+    fn from_wire_partial(input: &[u8]) -> Result<(&[u8], Self), String> {
+        let (input, inner) = KeyShardBuilder::from_wire_partial(input)?;
+        let (input, identity) = Identity::from_wire_partial(input)?;
 
         if inner.doc_chksum.code() != CHECKSUM_ALGORITHM.into() {
             return Err("document checksum must be Blake2b-256".to_string());
@@ -112,7 +112,7 @@ impl FromWire for KeyShard {
             ));
         }
 
-        Ok((KeyShard { inner, identity }, input))
+        Ok((input, KeyShard { inner, identity }))
     }
 }
 
@@ -143,7 +143,7 @@ impl ToWire for EncryptedKeyShard {
 }
 
 impl FromWire for EncryptedKeyShard {
-    fn from_wire_partial(input: &[u8]) -> Result<(Self, &[u8]), String> {
+    fn from_wire_partial(input: &[u8]) -> Result<(&[u8], Self), String> {
         use crate::v0::wire::helpers::{take_chachapoly_ciphertext, take_chachapoly_nonce};
         use nom::{combinator::complete, IResult};
 
@@ -155,14 +155,14 @@ impl FromWire for EncryptedKeyShard {
         }
         let mut parse = complete(parse);
 
-        let (remain, (nonce, ciphertext)) = parse(input).map_err(|err| format!("{:?}", err))?;
+        let (input, (nonce, ciphertext)) = parse(input).map_err(|err| format!("{:?}", err))?;
 
         Ok((
+            input,
             EncryptedKeyShard {
                 nonce,
                 ciphertext: ciphertext.into(),
             },
-            remain,
         ))
     }
 }

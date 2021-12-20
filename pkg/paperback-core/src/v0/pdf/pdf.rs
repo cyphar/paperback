@@ -142,19 +142,19 @@ const A4_HEIGHT: Mm = Mm(297.0);
 impl ToPdf for MainDocument {
     fn to_pdf(&self) -> Result<PdfDocumentReference, Error> {
         // Generate QR codes to embed in the PDF.
-        let data_codes = qr::generate_codes(PartType::MainDocumentData, self.to_wire())?
+        let (data_qrs, data_qr_datas) =
+            qr::generate_codes(PartType::MainDocumentData, self.to_wire())?;
+        let data_qrs = data_qrs
             .iter()
             .map(|code| code.render::<svg::Color>().build())
             .map(|svg| Svg::parse(&svg))
             .collect::<Result<Vec<_>, _>>()
             .map_err(Error::ParseSvg)?; // TODO: Use (#[from] SvgParseError);
 
-        let chksum_code = Svg::parse(
-            &qr::generate_one_code(PartType::MainDocumentChecksum, &self.checksum().to_bytes())?
-                .render::<svg::Color>()
-                .build(),
-        )
-        .map_err(Error::ParseSvg)?; // TODO: Use (#[from] SvgParseError);
+        let (chksum_qr, chksum_qr_data) =
+            qr::generate_one_code(PartType::MainDocumentChecksum, &self.checksum().to_bytes())?;
+        let chksum_qr =
+            Svg::parse(&chksum_qr.render::<svg::Color>().build()).map_err(Error::ParseSvg)?; // TODO: Use (#[from] SvgParseError);
 
         // Construct an A4 PDF.
         let (doc, page1, layer1) = PdfDocument::new(
@@ -215,13 +215,19 @@ impl ToPdf for MainDocument {
         }
         current_layer.end_text_section();
 
-        let data_code_refs = data_codes
+        let data_qr_refs = data_qrs
             .into_iter()
             .map(|code| code.into_xobject(&current_layer))
             .collect::<Vec<_>>();
 
+        // TODO: Get rid of this.
+        println!("Main Document:");
+        data_qr_datas
+            .iter()
+            .for_each(|code| println!("{}", multibase::encode(multibase::Base::Base10, code)));
+
         let (mut current_x, mut current_y) = (Mm(0.0), MARGIN + Mm(35.0));
-        for svg in data_code_refs {
+        for svg in data_qr_refs {
             let target_size = A4_WIDTH / 3.0 - Mm(1.0);
             let (width, height) = (svg.width, svg.height);
             let (scale_x, scale_y) = (
@@ -252,7 +258,7 @@ impl ToPdf for MainDocument {
 
         current_y += A4_WIDTH / 3.0;
         {
-            let chksum_code_ref = chksum_code.into_xobject(&current_layer);
+            let chksum_code_ref = chksum_qr.into_xobject(&current_layer);
 
             let target_size = A5_WIDTH * 0.3;
             let (scale_x, scale_y) = (
@@ -278,7 +284,7 @@ impl ToPdf for MainDocument {
                     A4_HEIGHT - (current_y + target_size / 2.0 - Mm(1.0)),
                 ),
                 A5_WIDTH,
-                self.checksum().to_bytes(),
+                chksum_qr_data,
                 &monospace_font,
                 12.0,
             );
@@ -304,18 +310,15 @@ impl ToPdf for (&EncryptedKeyShard, &KeyShardCodewords) {
             .map_err(|err| Error::OtherError(format!("failed to decrypt shard: {:?}", err)))?;
 
         // Generate QR codes to embed in the PDF.
-        let data_code = Svg::parse(
-            &qr::generate_one_code(PartType::KeyShardData, shard.to_wire())?
-                .render::<svg::Color>()
-                .build(),
-        )
-        .map_err(Error::ParseSvg)?; // TODO: Use (#[from] SvgParseError);
-        let chksum_code = Svg::parse(
-            &qr::generate_one_code(PartType::KeyShardChecksum, &shard.checksum().to_bytes())?
-                .render::<svg::Color>()
-                .build(),
-        )
-        .map_err(Error::ParseSvg)?; // TODO: Use (#[from] SvgParseError);
+        let (data_qr, data_qr_data) =
+            qr::generate_one_code(PartType::KeyShardData, shard.to_wire())?;
+        let data_qr =
+            Svg::parse(&data_qr.render::<svg::Color>().build()).map_err(Error::ParseSvg)?; // TODO: Use (#[from] SvgParseError);
+
+        let (chksum_qr, chksum_qr_data) =
+            qr::generate_one_code(PartType::KeyShardChecksum, &shard.checksum().to_bytes())?;
+        let chksum_qr =
+            Svg::parse(&chksum_qr.render::<svg::Color>().build()).map_err(Error::ParseSvg)?; // TODO: Use (#[from] SvgParseError);
 
         // Construct an A5 PDF.
         let (doc, page1, layer1) = PdfDocument::new(
@@ -389,16 +392,16 @@ impl ToPdf for (&EncryptedKeyShard, &KeyShardCodewords) {
 
         current_y += Mm(40.0);
         {
-            let data_code_ref = data_code.into_xobject(&current_layer);
+            let data_qr_ref = data_qr.into_xobject(&current_layer);
 
             let target_size = A5_WIDTH * 0.3;
             let (scale_x, scale_y) = (
-                target_size.0 / px_to_mm(data_code_ref.width).0,
-                target_size.0 / px_to_mm(data_code_ref.height).0,
+                target_size.0 / px_to_mm(data_qr_ref.width).0,
+                target_size.0 / px_to_mm(data_qr_ref.height).0,
             );
 
             // Shard data.
-            data_code_ref.add_to_layer(
+            data_qr_ref.add_to_layer(
                 &current_layer,
                 SvgTransform {
                     translate_x: Some(MARGIN),
@@ -412,7 +415,7 @@ impl ToPdf for (&EncryptedKeyShard, &KeyShardCodewords) {
                 &current_layer,
                 (MARGIN + A5_WIDTH * 0.32, A5_HEIGHT - current_y),
                 A5_WIDTH,
-                shard.to_wire(),
+                data_qr_data,
                 &monospace_font,
                 8.0,
             );
@@ -420,16 +423,16 @@ impl ToPdf for (&EncryptedKeyShard, &KeyShardCodewords) {
 
         current_y += Mm(60.0);
         {
-            let chksum_code_ref = chksum_code.into_xobject(&current_layer);
+            let chksum_qr_ref = chksum_qr.into_xobject(&current_layer);
 
             let target_size = A5_WIDTH * 0.3;
             let (scale_x, scale_y) = (
-                target_size.0 / px_to_mm(chksum_code_ref.width).0,
-                target_size.0 / px_to_mm(chksum_code_ref.height).0,
+                target_size.0 / px_to_mm(chksum_qr_ref.width).0,
+                target_size.0 / px_to_mm(chksum_qr_ref.height).0,
             );
 
             // Shard checksum.
-            chksum_code_ref.add_to_layer(
+            chksum_qr_ref.add_to_layer(
                 &current_layer,
                 SvgTransform {
                     translate_x: Some(MARGIN),
@@ -446,7 +449,7 @@ impl ToPdf for (&EncryptedKeyShard, &KeyShardCodewords) {
                     A5_HEIGHT - (current_y + target_size / 2.0 - Mm(1.0)),
                 ),
                 A5_WIDTH,
-                shard.checksum().to_bytes(),
+                chksum_qr_data,
                 &monospace_font,
                 8.0,
             );

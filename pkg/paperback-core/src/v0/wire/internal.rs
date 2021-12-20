@@ -59,7 +59,7 @@ type IdentityParseResult = (
 
 // Internal only -- users can't see Identity.
 impl FromWire for Identity {
-    fn from_wire_partial(input: &[u8]) -> Result<(Self, &[u8]), String> {
+    fn from_wire_partial(input: &[u8]) -> Result<(&[u8], Self), String> {
         use crate::v0::wire::helpers::{take_ed25519_pub, take_ed25519_sig};
         use nom::{combinator::complete, IResult};
 
@@ -71,14 +71,14 @@ impl FromWire for Identity {
         }
         let mut parse = complete(parse);
 
-        let (remain, (public_key, signature)) = parse(input).map_err(|err| format!("{:?}", err))?;
+        let (input, (public_key, signature)) = parse(input).map_err(|err| format!("{:?}", err))?;
 
         Ok((
+            input,
             Identity {
                 id_public_key: public_key.map_err(|err| format!("{:?}", err))?,
                 id_signature: signature.map_err(|err| format!("{:?}", err))?,
             },
-            remain,
         ))
     }
 }
@@ -118,7 +118,7 @@ type ShardSecretParseResult = (ChaChaPolyKey, Option<Result<SecretKey, Signature
 
 // Internal only -- users can't see ShardSecret.
 impl FromWire for ShardSecret {
-    fn from_wire_partial(input: &[u8]) -> Result<(Self, &[u8]), String> {
+    fn from_wire_partial(input: &[u8]) -> Result<(&[u8], Self), String> {
         use crate::v0::wire::helpers::{take_chachapoly_key, take_ed25519_sec};
         use nom::{combinator::complete, IResult};
 
@@ -130,7 +130,7 @@ impl FromWire for ShardSecret {
         }
         let mut parse = complete(parse);
 
-        let (remain, (doc_key, private_key)) = parse(input).map_err(|err| format!("{:?}", err))?;
+        let (input, (doc_key, private_key)) = parse(input).map_err(|err| format!("{:?}", err))?;
 
         let id_private_key = match private_key {
             Some(Ok(key)) => Some(key),
@@ -139,11 +139,11 @@ impl FromWire for ShardSecret {
         };
 
         Ok((
+            input,
             ShardSecret {
                 doc_key,
                 id_private_key,
             },
-            remain,
         ))
     }
 }

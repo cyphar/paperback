@@ -25,15 +25,15 @@ use std::{
     io::{prelude::*, BufReader, BufWriter},
 };
 
-use anyhow::{anyhow, Context, Error};
+use anyhow::{anyhow, ensure, Context, Error};
 use clap::{App, Arg, ArgMatches, SubCommand};
 
 extern crate paperback_core;
 use paperback_core::latest as paperback;
 
-fn backup(matches: &ArgMatches<'_>) -> Result<(), Error> {
-    use paperback::{Backup, ToPdf};
+use paperback::{pdf::qr, wire, Backup, FromWire, KeyShardCodewords, ToPdf};
 
+fn backup(matches: &ArgMatches<'_>) -> Result<(), Error> {
     let sealed: bool = matches
         .value_of("sealed")
         .expect("invalid --sealed argument")
@@ -99,12 +99,125 @@ fn backup(matches: &ArgMatches<'_>) -> Result<(), Error> {
     Ok(())
 }
 
+fn read_multiline<S: AsRef<str>>(prompt: S) -> Result<String, Error> {
+    print!("{}: ", prompt.as_ref());
+    io::stdout().flush()?;
+
+    let buffer_stdin = BufReader::new(io::stdin());
+    Ok(buffer_stdin
+        .lines()
+        .take_while(|s| match s.as_deref() {
+            Ok("") | Err(_) => false,
+            _ => true,
+        })
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|err| anyhow!("failed to read data: {}", err))?
+        .join("\n"))
+}
+
+fn read_multibase<S: AsRef<str>, T: FromWire>(prompt: S) -> Result<T, Error> {
+    Ok(T::from_wire_multibase(
+        wire::multibase_strip(read_multiline(prompt)?)
+            .map_err(|err| anyhow!("failed to strip out non-multibase characters: {}", err))?,
+    )
+    .map_err(|err| anyhow!("failed to parse data: {}", err))?)
+}
+
+fn read_codewords<S: AsRef<str>>(prompt: S) -> Result<KeyShardCodewords, Error> {
+    Ok(read_multiline(prompt)?
+        .split_whitespace()
+        .map(|s| s.to_owned())
+        .collect::<Vec<_>>())
+}
+
+fn read_multibase_qr<S: AsRef<str>, T: FromWire>(prompt: S) -> Result<T, Error> {
+    let prompt = prompt.as_ref();
+    let mut joiner = qr::Joiner::new();
+    while !joiner.complete() {
+        let part: qr::Part = read_multibase(prompt)?;
+        joiner.add_part(part)?;
+    }
+    T::from_wire(joiner.combine_parts()?)
+        .map_err(|err| anyhow!("parse inner qr code data: {}", err))
+}
+
+fn recover(matches: &ArgMatches<'_>) -> Result<(), Error> {
+    use paperback::{EncryptedKeyShard, MainDocument, UntrustedQuorum};
+
+    let interactive: bool = matches
+        .value_of("interactive")
+        .expect("invalid --interactive argument")
+        .parse()
+        .context("--interactive argument was not a boolean")?;
+    ensure!(interactive, "PDF scanning not yet implemented");
+    let output_path = matches
+        .value_of("OUTPUT")
+        .expect("required OUTPUT argument not given");
+
+    let main_document: MainDocument = read_multibase_qr("Main Document")?;
+    let quorum_size = main_document.quorum_size();
+    println!("Document ID: {}", main_document.id());
+    // TODO: Ask the user to input the checksum...
+    println!("Document Checksum: {}", main_document.checksum_string());
+
+    let mut quorum = UntrustedQuorum::new();
+    quorum.main_document(main_document);
+    for idx in 0..quorum_size {
+        let encrypted_shard: EncryptedKeyShard = read_multibase(format!("Shard {}", idx + 1))?;
+        // TODO: Ask the user to input the checksum...
+        println!(
+            "Shard {} Checksum: {}",
+            idx + 1,
+            encrypted_shard.checksum_string()
+        );
+
+        let codewords = read_codewords(format!("Shard {} Codeword", idx + 1))?;
+        let shard = encrypted_shard
+            .decrypt(&codewords)
+            .map_err(|err| anyhow!(err)) // TODO: Fix this once FromWire supports non-String errors.
+            .with_context(|| format!("decrypting shard {}", idx + 1))?;
+
+        println!("Loaded shard {}.", shard.id());
+        quorum.push_shard(shard);
+    }
+
+    let quorum = match quorum.validate() {
+        Ok(validated_quorum) => validated_quorum,
+        Err(err) => {
+            // TODO: Make this error much cleaner.
+            return Err(anyhow!(
+                "quorum failed to validate -- possible forgery! groupings: {:?}",
+                err.as_groups()
+            ));
+        }
+    };
+
+    let secret = quorum
+        .recover_document()
+        .context("recovering secret data")?;
+
+    let mut output_file: Box<dyn Write + 'static> =
+        if output_path == "-" {
+            Box::new(io::stdout())
+        } else {
+            Box::new(File::create(output_path).with_context(|| {
+                format!("failed to open output file '{}' for writing", output_path)
+            })?)
+        };
+
+    output_file
+        .write_all(&secret)
+        .context("write secret data to file")?;
+
+    Ok(())
+}
+
 fn main() -> Result<(), Box<dyn StdError>> {
     let matches = App::new("paperback-cli")
         .version("0.0.0")
         .author("Aleksa Sarai <cyphar@cyphar.com>")
         .about("Operate on a paperback backup using a basic CLI interface.")
-        // paperback-cli raw backup [--sealed] -n <QUORUM SIZE> -k <SHARDS> INPUT
+        // paperback-cli backup [--sealed] -n <QUORUM SIZE> -k <SHARDS> INPUT
         .subcommand(SubCommand::with_name("backup")
             .arg(Arg::with_name("sealed")
                 .long("sealed")
@@ -130,12 +243,25 @@ fn main() -> Result<(), Box<dyn StdError>> {
                 .allow_hyphen_values(true)
                 .required(true)
                 .index(1)))
+        // paperback-cli recover --interactive
+        .subcommand(SubCommand::with_name("recover")
+            .arg(Arg::with_name("interactive")
+                .long("interactive")
+                .help("Ask for data stored in QR codes interactively rather than scanning images.")
+                .possible_values(&["true", "false"])
+                .default_value("true"))
+            .arg(Arg::with_name("OUTPUT")
+                .help(r#"Path to write recovered secret data to ("-" to write to stdout)."#)
+                .allow_hyphen_values(true)
+                .required(true)
+                .index(1)))
         .subcommand(raw::subcommands())
         .get_matches();
 
     let ret = match matches.subcommand() {
         ("raw", Some(sub_matches)) => raw::submatch(sub_matches),
         ("backup", Some(sub_matches)) => backup(sub_matches),
+        ("recover", Some(sub_matches)) => recover(sub_matches),
         (subcommand, _) => Err(anyhow!("unknown subcommand '{}'", subcommand)),
     }?;
 

@@ -163,7 +163,6 @@ fn raw_restore(matches: &ArgMatches<'_>) -> Result<(), Error> {
             .split_whitespace()
             .map(|s| s.to_owned())
             .collect::<Vec<_>>();
-
         let shard = encrypted_shard
             .decrypt(&codewords)
             .map_err(|err| anyhow!(err)) // TODO: Fix this once FromWire supports non-String errors.

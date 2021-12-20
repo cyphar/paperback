@@ -47,7 +47,7 @@ impl ToWire for MainDocumentMeta {
 // Internal only -- users can't see MainDocumentMeta.
 #[doc(hidden)]
 impl FromWire for MainDocumentMeta {
-    fn from_wire_partial(input: &[u8]) -> Result<(Self, &[u8]), String> {
+    fn from_wire_partial(input: &[u8]) -> Result<(&[u8], Self), String> {
         use nom::{combinator::complete, IResult};
 
         fn parse(input: &[u8]) -> IResult<&[u8], MainDocumentMeta> {
@@ -63,8 +63,8 @@ impl FromWire for MainDocumentMeta {
         }
         let mut parse = complete(parse);
 
-        let (remain, meta) = parse(input).map_err(|err| format!("{:?}", err))?;
-        Ok((meta, remain))
+        let (input, meta) = parse(input).map_err(|err| format!("{:?}", err))?;
+        Ok((input, meta))
     }
 }
 
@@ -101,7 +101,7 @@ impl ToWire for MainDocumentBuilder {
 // Internal only -- users can't see MainDocumentBuilder.
 #[doc(hidden)]
 impl FromWire for MainDocumentBuilder {
-    fn from_wire_partial(input: &[u8]) -> Result<(Self, &[u8]), String> {
+    fn from_wire_partial(input: &[u8]) -> Result<(&[u8], Self), String> {
         use crate::v0::wire::helpers::{take_chachapoly_ciphertext, take_chachapoly_nonce};
         use nom::{combinator::complete, IResult};
 
@@ -113,16 +113,16 @@ impl FromWire for MainDocumentBuilder {
         }
         let mut parse = complete(parse);
 
-        let (meta, input) = MainDocumentMeta::from_wire_partial(input)?;
-        let (remain, (nonce, ciphertext)) = parse(input).map_err(|err| format!("{:?}", err))?;
+        let (input, meta) = MainDocumentMeta::from_wire_partial(input)?;
+        let (input, (nonce, ciphertext)) = parse(input).map_err(|err| format!("{:?}", err))?;
 
         Ok((
+            input,
             MainDocumentBuilder {
                 meta,
                 nonce,
                 ciphertext: ciphertext.into(),
             },
-            remain,
         ))
     }
 }
@@ -139,9 +139,9 @@ impl ToWire for MainDocument {
 }
 
 impl FromWire for MainDocument {
-    fn from_wire_partial(input: &[u8]) -> Result<(Self, &[u8]), String> {
-        let (inner, input) = MainDocumentBuilder::from_wire_partial(input)?;
-        let (identity, input) = Identity::from_wire_partial(input)?;
+    fn from_wire_partial(input: &[u8]) -> Result<(&[u8], Self), String> {
+        let (input, inner) = MainDocumentBuilder::from_wire_partial(input)?;
+        let (input, identity) = Identity::from_wire_partial(input)?;
 
         if inner.meta.version != 0 {
             return Err(format!(
@@ -150,7 +150,7 @@ impl FromWire for MainDocument {
             ));
         }
 
-        Ok((MainDocument { inner, identity }, input))
+        Ok((input, MainDocument { inner, identity }))
     }
 }
 
