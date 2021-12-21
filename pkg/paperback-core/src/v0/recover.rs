@@ -86,6 +86,7 @@ pub struct Grouping(pub Vec<Vec<Type>>);
 
 #[derive(Debug, Clone, Default)]
 pub struct UntrustedQuorum {
+    untrusted_quorum_size: Option<u32>,
     untrusted_main_document: Option<MainDocument>,
     untrusted_shards: Vec<KeyShard>,
 }
@@ -131,12 +132,19 @@ impl UntrustedQuorum {
         Default::default()
     }
 
+    pub fn quorum_size(&self) -> Option<u32> {
+        self.untrusted_quorum_size
+    }
+
     pub fn push_shard(&mut self, shard: KeyShard) -> &mut Self {
+        self.untrusted_quorum_size
+            .get_or_insert(shard.quorum_size());
         self.untrusted_shards.push(shard);
         self
     }
 
     pub fn main_document(&mut self, main: MainDocument) -> &mut Self {
+        self.untrusted_quorum_size.get_or_insert(main.quorum_size());
         self.untrusted_main_document = Some(main);
         self
     }
@@ -175,7 +183,7 @@ impl UntrustedQuorum {
                 Type::KeyShard(shard) | Type::ForgedKeyShard(shard) => GroupId {
                     version: shard.inner.version,
                     doc_chksum: shard.document_checksum(),
-                    quorum_size: shard.inner.shard.threshold(),
+                    quorum_size: shard.quorum_size(),
                     id_public_key: HashablePublicKey(shard.identity.id_public_key),
                 },
             };
@@ -285,6 +293,9 @@ impl UntrustedQuorum {
             if main_document.checksum() != doc_chksum
                 || main_document.identity.id_public_key != id_public_key
                 || main_document.inner.meta.version != version
+                || self
+                    .quorum_size()
+                    .map_or(false, |s| s != main_document.quorum_size())
             {
                 return Err(InconsistentQuorumError {
                     message: "main document has inconsistent identity".to_string(),
@@ -296,6 +307,9 @@ impl UntrustedQuorum {
             if shard.document_checksum() != doc_chksum
                 || shard.identity.id_public_key != id_public_key
                 || shard.inner.version != version
+                || self
+                    .quorum_size()
+                    .map_or(false, |s| s != shard.quorum_size())
             {
                 return Err(InconsistentQuorumError {
                     message: "shard has inconsistent identity".to_string(),

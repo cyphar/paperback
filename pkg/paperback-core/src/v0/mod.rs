@@ -201,6 +201,10 @@ impl KeyShard {
         multihash_short_id(self.document_checksum(), MainDocument::ID_LENGTH)
     }
 
+    pub fn quorum_size(&self) -> u32 {
+        self.inner.shard.threshold()
+    }
+
     pub fn encrypt(&self) -> Result<(EncryptedKeyShard, KeyShardCodewords), Error> {
         // Serialise.
         let wire_shard = self.to_wire();

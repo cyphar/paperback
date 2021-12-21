@@ -31,7 +31,10 @@ use clap::{App, Arg, ArgMatches, SubCommand};
 extern crate paperback_core;
 use paperback_core::latest as paperback;
 
-use paperback::{pdf::qr, wire, Backup, FromWire, KeyShardCodewords, ToPdf};
+use paperback::{
+    pdf::qr, wire, Backup, EncryptedKeyShard, FromWire, KeyShardCodewords, MainDocument, ToPdf,
+    UntrustedQuorum,
+};
 
 fn backup(matches: &ArgMatches<'_>) -> Result<(), Error> {
     let sealed: bool = matches
@@ -142,8 +145,6 @@ fn read_multibase_qr<S: AsRef<str>, T: FromWire>(prompt: S) -> Result<T, Error> 
 }
 
 fn recover(matches: &ArgMatches<'_>) -> Result<(), Error> {
-    use paperback::{EncryptedKeyShard, MainDocument, UntrustedQuorum};
-
     let interactive: bool = matches
         .value_of("interactive")
         .expect("invalid --interactive argument")
@@ -171,7 +172,7 @@ fn recover(matches: &ArgMatches<'_>) -> Result<(), Error> {
             encrypted_shard.checksum_string()
         );
 
-        let codewords = read_codewords(format!("Shard {} Codeword", idx + 1))?;
+        let codewords = read_codewords(format!("Shard {} Codewords", idx + 1))?;
         let shard = encrypted_shard
             .decrypt(&codewords)
             .map_err(|err| anyhow!(err)) // TODO: Fix this once FromWire supports non-String errors.
@@ -181,16 +182,12 @@ fn recover(matches: &ArgMatches<'_>) -> Result<(), Error> {
         quorum.push_shard(shard);
     }
 
-    let quorum = match quorum.validate() {
-        Ok(validated_quorum) => validated_quorum,
-        Err(err) => {
-            // TODO: Make this error much cleaner.
-            return Err(anyhow!(
-                "quorum failed to validate -- possible forgery! groupings: {:?}",
-                err.as_groups()
-            ));
-        }
-    };
+    let quorum = quorum.validate().map_err(|err| {
+        anyhow!(
+            "quorum failed to validate -- possible forgery! groupings: {:?}",
+            err.as_groups()
+        )
+    })?;
 
     let secret = quorum
         .recover_document()
@@ -208,6 +205,73 @@ fn recover(matches: &ArgMatches<'_>) -> Result<(), Error> {
     output_file
         .write_all(&secret)
         .context("write secret data to file")?;
+
+    Ok(())
+}
+
+fn expand(matches: &ArgMatches<'_>) -> Result<(), Error> {
+    let interactive: bool = matches
+        .value_of("interactive")
+        .expect("invalid --interactive argument")
+        .parse()
+        .context("--interactive argument was not a boolean")?;
+    ensure!(interactive, "PDF scanning not yet implemented");
+    let num_new_shards: u32 = matches
+        .value_of("new_shards")
+        .expect("required --new-shards argument not given")
+        .parse()
+        .context("--new-shards argument was not an unsigned integer")?;
+
+    let mut quorum = UntrustedQuorum::new();
+    for idx in 0.. {
+        let encrypted_shard: EncryptedKeyShard = read_multibase(format!("Shard {}", idx + 1))?;
+        // TODO: Ask the user to input the checksum...
+        println!(
+            "Shard {} Checksum: {}",
+            idx + 1,
+            encrypted_shard.checksum_string()
+        );
+
+        let codewords = read_codewords(format!("Shard {} Codewords", idx + 1))?;
+        let shard = encrypted_shard
+            .decrypt(&codewords)
+            .map_err(|err| anyhow!(err)) // TODO: Fix this once FromWire supports non-String errors.
+            .with_context(|| format!("decrypting shard {}", idx + 1))?;
+
+        println!("Loaded shard {}.", shard.id());
+        quorum.push_shard(shard);
+
+        if idx + 1
+            >= quorum
+                .quorum_size()
+                .expect("quorum_size should be set after adding a shard")
+        {
+            break;
+        }
+    }
+
+    let quorum = quorum.validate().map_err(|err| {
+        anyhow!(
+            "quorum failed to validate -- possible forgery! groupings: {:?}",
+            err.as_groups()
+        )
+    })?;
+
+    let new_shards = quorum
+        .extend_shards(num_new_shards)
+        .context("minting new shards")?
+        .iter()
+        .map(|s| (s.document_id(), s.id(), s.encrypt().unwrap()))
+        .collect::<Vec<_>>();
+
+    for (document_id, shard_id, (shard, codewords)) in new_shards {
+        (shard, codewords)
+            .to_pdf()?
+            .save(&mut BufWriter::new(File::create(format!(
+                "key_shard-{}-{}.pdf",
+                document_id, shard_id
+            ))?))?;
+    }
 
     Ok(())
 }
@@ -255,6 +319,20 @@ fn main() -> Result<(), Box<dyn StdError>> {
                 .allow_hyphen_values(true)
                 .required(true)
                 .index(1)))
+        // paperback-cli expand --interactive -n <SHARDS>
+        .subcommand(SubCommand::with_name("expand")
+            .arg(Arg::with_name("interactive")
+                .long("interactive")
+                .help(r#"Ask for data stored in QR codes interactively rather than scanning images."#)
+                .possible_values(&["true", "false"])
+                .default_value("true"))
+            .arg(Arg::with_name("new_shards")
+                .short("n")
+                .long("new-shards")
+                .value_name("NUM SHARDS")
+                .help(r#"Number of new shards to create."#)
+                .takes_value(true)
+                .required(true)))
         .subcommand(raw::subcommands())
         .get_matches();
 
@@ -262,6 +340,7 @@ fn main() -> Result<(), Box<dyn StdError>> {
         ("raw", Some(sub_matches)) => raw::submatch(sub_matches),
         ("backup", Some(sub_matches)) => backup(sub_matches),
         ("recover", Some(sub_matches)) => recover(sub_matches),
+        ("expand", Some(sub_matches)) => expand(sub_matches),
         (subcommand, _) => Err(anyhow!("unknown subcommand '{}'", subcommand)),
     }?;
 

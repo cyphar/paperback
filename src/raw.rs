@@ -170,16 +170,12 @@ fn raw_restore(matches: &ArgMatches<'_>) -> Result<(), Error> {
         quorum.push_shard(shard);
     }
 
-    let quorum = match quorum.validate() {
-        Ok(validated_quorum) => validated_quorum,
-        Err(err) => {
-            // TODO: Make this error much cleaner.
-            return Err(anyhow!(
-                "quorum failed to validate -- possible forgery! groupings: {:?}",
-                err.as_groups()
-            ));
-        }
-    };
+    let quorum = quorum.validate().map_err(|err| {
+        anyhow!(
+            "quorum failed to validate -- possible forgery! groupings: {:?}",
+            err.as_groups()
+        )
+    })?;
 
     let secret = quorum
         .recover_document()
@@ -239,16 +235,12 @@ fn raw_expand(matches: &ArgMatches<'_>) -> Result<(), Error> {
         quorum.push_shard(shard);
     }
 
-    let quorum = match quorum.validate() {
-        Ok(validated_quorum) => validated_quorum,
-        Err(err) => {
-            // TODO: Make this error much cleaner.
-            return Err(anyhow!(
-                "quorum failed to validate -- possible forgery! groupings: {:?}",
-                err.as_groups()
-            ));
-        }
-    };
+    let quorum = quorum.validate().map_err(|err| {
+        anyhow!(
+            "quorum failed to validate -- possible forgery! groupings: {:?}",
+            err.as_groups()
+        )
+    })?;
 
     let new_shards = quorum
         .extend_shards(num_new_shards)
