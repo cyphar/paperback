@@ -1,7 +1,5 @@
 ## paperback ##
 
-**NOTE**: This project is still a work-in-progress.
-
 `paperback` is a paper-based backup scheme that is secure and easy-to-use.
 Backups are encrypted, and the secret key is split into numerous "key shards"
 which can be stored separately (by different individuals), removing the need
@@ -14,12 +12,13 @@ secret key (not even you), and thus no party can be compelled to provide the
 key without the consent of `k-1` other parties.
 
 To make this system as simple-to-use as possible, `paperback` creates several
-PDFs which you can then print out and laminate, ready for recovery. The mockup
-layout of these document is given below.
+PDFs which you can then print out and laminate, ready for recovery. Here are
+some examples of the generated documents:
 
-|                      Main Document                       |                   Key Shard                      |
-| :------------------------------------------------------: | :----------------------------------------------: |
-| ![Main Document Mockup](contrib/mockup-maindocument.png) | ![Key Shard Mockup](contrib/mockup-keyshard.png) |
+|               |                         Mockups                           |                      Current Status                    |
+| ------------- | :-------------------------------------------------------: | :----------------------------------------------------: |
+| Main Document | <img height="400" src="contrib/mockup-maindocument.png"/> | <img height="400" src="contrib/poc-maindocument.png"/> |
+| Key Shard     | <img height="400" src="contrib/mockup-keyshard.png"/>     | <img height="400" src="contrib/poc-keyshard.png"/>     |
 
 These "key shards" can then be given to a set of semi-trusted people.
 `paperback` also supports `(k, n)` redundancy, allowing for `n` key shards to
