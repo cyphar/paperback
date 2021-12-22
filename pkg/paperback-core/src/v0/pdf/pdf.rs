@@ -35,7 +35,6 @@ pub trait ToPdf {
 // font data into the paperback code).
 
 const SVG_DPI: f64 = 300.0;
-const MARGIN: Mm = Mm(5.0);
 
 mod colours {
     use printpdf::*;
@@ -51,6 +50,13 @@ mod colours {
         r: 0.4,
         g: 0.4,
         b: 0.4,
+        icc_profile: None,
+    });
+
+    pub(super) const LIGHT_GREY: Color = Color::Rgb(Rgb {
+        r: 0.6,
+        g: 0.6,
+        b: 0.6,
         icc_profile: None,
     });
 
@@ -73,17 +79,6 @@ fn px_to_mm(px: Px) -> Mm {
     px.into_pt(SVG_DPI).into()
 }
 
-/*
-fn banner<S: Into<String>>(
-    layer: &PdfLayerReference,
-    y: Mm,
-    width: Mm,
-    text: S,
-    font: &IndirectFontRef,
-) {
-}
-*/
-
 fn text_fallback<D: AsRef<[u8]>>(
     layer: &PdfLayerReference,
     (x, y): (Mm, Mm),
@@ -91,32 +86,49 @@ fn text_fallback<D: AsRef<[u8]>>(
     data: D,
     font: &IndirectFontRef,
     font_size: f64,
-) {
+) -> Mm {
     let data_lines = multibase::encode(Base::Base32Z, data)
+        // Split the encoded version into 4-char words.
         .into_bytes()
         .chunks(4)
-        .map(|c| String::from_utf8_lossy(c))
+        .map(|cs| String::from_utf8_lossy(cs))
         .collect::<Vec<_>>()
-        .chunks(9) // TODO: Calculate the right width dynamically using azul-text-layout.
-        .map(|c| c.join("-"))
+        // Split the words into rows for printing.
+        // TODO: Calculate the right width dynamically using azul-text-layout.
+        .chunks(8)
+        // Join the words with "-". This is to work around the fact that
+        // printpdf appears to generate PDFs such that horizontally-written
+        // words get selected as if they were columns (breaking copy-and-paste
+        // for these data sections).
+        .map(|ws| ws.join("-"))
+        .map(|line| match line.len() {
+            39 /* 4*8+7 */ => line, // Line is the right length.
+            l @ 0..=38 => { // Line needs to be padded.
+                let mut line = line.clone();
+                line.push_str(&"-".repeat(39-l));
+                line
+            },
+            _ => unreachable!(), // Not possible given how this string was constructed.
+        })
         .collect::<Vec<String>>();
 
     layer.begin_text_section();
     {
         layer.set_font(font, font_size - 2.0);
-        layer.set_line_height((font_size - 2.0) * 1.5);
+        layer.set_line_height(font_size - 2.0 + 2.0);
         layer.set_word_spacing(1.2);
         layer.set_character_spacing(1.0);
         layer.set_text_rendering_mode(TextRenderingMode::Fill);
 
         layer.set_text_cursor(x, y);
+        layer.set_fill_color(colours::LIGHT_GREY);
         layer.write_text("text fallback if barcode scanning fails", font);
     }
     layer.end_text_section();
     layer.begin_text_section();
     {
         layer.set_font(font, font_size);
-        layer.set_line_height(font_size * 1.5);
+        layer.set_line_height(font_size + 2.0);
         layer.set_word_spacing(1.2);
         layer.set_character_spacing(1.0);
         layer.set_text_rendering_mode(TextRenderingMode::Fill);
@@ -134,10 +146,17 @@ fn text_fallback<D: AsRef<[u8]>>(
         }
     }
     layer.end_text_section();
+
+    Mm::from(Pt(font_size + 2.0)) * (data_lines.len() as f64)
 }
 
 const A4_WIDTH: Mm = Mm(210.0);
 const A4_HEIGHT: Mm = Mm(297.0);
+const A4_MARGIN: Mm = Mm(10.0);
+
+const FONT_ROBOTOSLAB: &[u8] = include_bytes!("fonts/RobotoSlab-Regular.ttf");
+const FONT_B612MONO: &[u8] = include_bytes!("fonts/B612Mono-Regular.ttf");
+const FONT_B612MONO_BOLD: &[u8] = include_bytes!("fonts/B612Mono-Bold.ttf");
 
 impl ToPdf for MainDocument {
     fn to_pdf(&self) -> Result<PdfDocumentReference, Error> {
@@ -164,11 +183,13 @@ impl ToPdf for MainDocument {
             "Layer 1",
         );
 
-        let monospace_font = doc.add_builtin_font(BuiltinFont::Courier)?;
-        let text_font = doc.add_builtin_font(BuiltinFont::Helvetica)?;
+        let monospace_font = doc.add_external_font(FONT_B612MONO)?;
+        let text_font = doc.add_external_font(FONT_ROBOTOSLAB)?;
 
         let current_page = doc.get_page(page1);
         let current_layer = current_page.get_layer(layer1);
+
+        let mut current_y = A4_MARGIN + Pt(10.0).into();
 
         // Header.
         current_layer.begin_text_section();
@@ -177,24 +198,28 @@ impl ToPdf for MainDocument {
             current_layer.set_word_spacing(1.2);
             current_layer.set_character_spacing(1.0);
 
-            current_layer.set_text_cursor(MARGIN, A4_HEIGHT - MARGIN - Pt(10.0).into());
-            current_layer.set_line_height(10.0 + 5.0);
+            current_layer.set_text_cursor(A4_MARGIN, A4_HEIGHT - current_y);
 
             // "Document".
-            current_layer.set_font(&monospace_font, 10.0);
+            current_layer.set_font(&text_font, 10.0);
             current_layer.set_fill_color(colours::GREY);
-            current_layer.write_text("Document", &monospace_font);
+            current_layer.write_text("Document", &text_font);
             current_layer.set_fill_color(colours::BLACK);
+            current_layer.set_line_height(20.0 + 2.0);
             current_layer.add_line_break();
             // <document id>
             current_layer.set_font(&monospace_font, 20.0);
             current_layer.set_fill_color(colours::MAIN_DOCUMENT_TRIM);
             current_layer.write_text(self.id(), &monospace_font);
             current_layer.set_fill_color(colours::BLACK);
+            current_layer.set_line_height(10.0 + 2.0);
+
+            current_layer.add_line_break();
             current_layer.add_line_break();
 
             // Details.
             current_layer.set_font(&text_font, 10.0);
+            current_layer.set_line_height(10.0 + 2.0);
             current_layer.write_text(
                 format!(
                     "This is the main document of a paperback backup. When combined with {} unique",
@@ -214,28 +239,51 @@ impl ToPdf for MainDocument {
             );
         }
         current_layer.end_text_section();
+        current_layer.begin_text_section();
+        {
+            // Header. TODO: Right-align this text.
+            current_layer.set_text_cursor(
+                A4_WIDTH - (A4_MARGIN + (Pt(15.0) * 12.0).into()),
+                A4_HEIGHT - (current_y + Pt(10.0).into()),
+            );
+            current_layer.set_font(&text_font, 20.0);
+            current_layer.set_fill_color(colours::MAIN_DOCUMENT_TRIM);
+            current_layer.write_text("Main Document", &text_font);
+            current_layer.set_fill_color(colours::BLACK);
+            current_layer.set_line_height(10.0 + 2.0);
+            current_layer.add_line_break();
+
+            current_layer.set_font(&monospace_font, 10.0);
+            current_layer.set_fill_color(colours::GREY);
+            current_layer.write_text("paperback-v0", &monospace_font);
+            current_layer.set_fill_color(colours::BLACK);
+            current_layer.set_line_height(10.0 + 2.0);
+        }
+        current_layer.end_text_section();
 
         let data_qr_refs = data_qrs
             .into_iter()
             .map(|code| code.into_xobject(&current_layer))
             .collect::<Vec<_>>();
 
-        // TODO: Get rid of this.
+        // TODO: Get rid of this once we have nice QR code scanning.
         println!("Main Document:");
         data_qr_datas
             .iter()
             .for_each(|code| println!("{}", multibase::encode(multibase::Base::Base10, code)));
 
-        let (mut current_x, mut current_y) = (Mm(0.0), MARGIN + Mm(35.0));
+        current_y += (Pt(22.0) + Pt(12.0) * 6.0).into();
+
+        let mut current_x = A4_MARGIN;
         for svg in data_qr_refs {
-            let target_size = A4_WIDTH / 3.0 - Mm(1.0);
+            let target_size = (A4_WIDTH - A4_MARGIN * 2.0) / 3.0;
             let (width, height) = (svg.width, svg.height);
             let (scale_x, scale_y) = (
                 target_size.0 / px_to_mm(width).0,
                 target_size.0 / px_to_mm(height).0,
             );
             if current_x + target_size > A4_WIDTH {
-                current_x = Mm(0.0);
+                current_x = A4_MARGIN;
                 current_y += target_size;
             }
             svg.add_to_layer(
@@ -256,37 +304,37 @@ impl ToPdf for MainDocument {
             }
         }
 
-        current_y += A4_WIDTH / 3.0;
+        current_y = A4_HEIGHT - (A4_WIDTH * 0.2 + A4_MARGIN);
         {
             let chksum_code_ref = chksum_qr.into_xobject(&current_layer);
 
-            let target_size = A5_WIDTH * 0.3;
+            let target_size = A4_WIDTH * 0.2;
             let (scale_x, scale_y) = (
                 target_size.0 / px_to_mm(chksum_code_ref.width).0,
                 target_size.0 / px_to_mm(chksum_code_ref.height).0,
             );
 
             // Document checksum.
+            text_fallback(
+                &current_layer,
+                (
+                    A4_MARGIN + A4_WIDTH * 0.32,
+                    A4_HEIGHT - (current_y + target_size / 2.0 - (Pt(8.0) * 2.0).into()),
+                ),
+                A4_WIDTH,
+                chksum_qr_data,
+                &monospace_font,
+                10.0,
+            );
             chksum_code_ref.add_to_layer(
                 &current_layer,
                 SvgTransform {
-                    translate_x: Some(MARGIN),
+                    translate_x: Some(A4_MARGIN),
                     translate_y: Some(A4_HEIGHT - (current_y + target_size)),
                     scale_x: Some(scale_x),
                     scale_y: Some(scale_y),
                     ..Default::default()
                 },
-            );
-            text_fallback(
-                &current_layer,
-                (
-                    MARGIN + A4_WIDTH * 0.32,
-                    A4_HEIGHT - (current_y + target_size / 2.0 - Mm(1.0)),
-                ),
-                A5_WIDTH,
-                chksum_qr_data,
-                &monospace_font,
-                12.0,
             );
         }
 
@@ -297,6 +345,7 @@ impl ToPdf for MainDocument {
 
 const A5_WIDTH: Mm = Mm(148.0);
 const A5_HEIGHT: Mm = Mm(210.0);
+const A5_MARGIN: Mm = Mm(5.0);
 
 impl ToPdf for (&EncryptedKeyShard, &KeyShardCodewords) {
     fn to_pdf(&self) -> Result<PdfDocumentReference, Error> {
@@ -332,65 +381,93 @@ impl ToPdf for (&EncryptedKeyShard, &KeyShardCodewords) {
             "Layer 1",
         );
 
-        let monospace_font = doc.add_builtin_font(BuiltinFont::Courier)?;
-        let monospace_bold_font = doc.add_builtin_font(BuiltinFont::CourierBold)?;
-        let text_font = doc.add_builtin_font(BuiltinFont::Helvetica)?;
+        let monospace_font = doc.add_external_font(FONT_B612MONO)?;
+        let monospace_bold_font = doc.add_external_font(FONT_B612MONO_BOLD)?;
+        let text_font = doc.add_external_font(FONT_ROBOTOSLAB)?;
 
         let current_page = doc.get_page(page1);
         let current_layer = current_page.get_layer(layer1);
 
-        let mut current_y = MARGIN * 2.0;
+        let mut current_y = A5_MARGIN + Pt(10.0).into();
 
         // Header.
         current_layer.begin_text_section();
         {
-            current_layer.set_font(&monospace_font, 10.0);
             current_layer.set_word_spacing(1.2);
             current_layer.set_character_spacing(1.0);
 
-            current_layer.set_text_cursor(MARGIN, A5_HEIGHT - current_y);
-            current_layer.set_line_height(10.0 + 5.0);
+            current_layer.set_text_cursor(A5_MARGIN, A5_HEIGHT - current_y);
 
             // "Document".
-            current_layer.set_font(&monospace_font, 10.0);
+            current_layer.set_font(&text_font, 10.0);
             current_layer.set_fill_color(colours::GREY);
-            current_layer.write_text("Document", &monospace_font);
+            current_layer.write_text("Document", &text_font);
             current_layer.set_fill_color(colours::BLACK);
+            current_layer.set_line_height(20.0 + 2.0);
             current_layer.add_line_break();
             // <document id>
             current_layer.set_font(&monospace_font, 20.0);
             current_layer.set_fill_color(colours::MAIN_DOCUMENT_TRIM);
             current_layer.write_text(decrypted_shard.document_id(), &monospace_font);
             current_layer.set_fill_color(colours::BLACK);
+            current_layer.set_line_height(10.0 + 2.0);
+            current_layer.add_line_break();
             current_layer.add_line_break();
 
             // "Shard".
-            current_layer.set_font(&monospace_font, 10.0);
+            current_layer.set_font(&text_font, 10.0);
             current_layer.set_fill_color(colours::GREY);
-            current_layer.write_text("Shard", &monospace_font);
+            current_layer.write_text("Shard", &text_font);
             current_layer.set_fill_color(colours::BLACK);
+            current_layer.set_line_height(20.0 + 2.0);
             current_layer.add_line_break();
             // <shard id>
             current_layer.set_font(&monospace_font, 20.0);
             current_layer.set_fill_color(colours::KEY_SHARD_TRIM);
             current_layer.write_text(decrypted_shard.id(), &monospace_font);
             current_layer.set_fill_color(colours::BLACK);
+            current_layer.set_line_height(10.0 + 2.0);
             current_layer.add_line_break();
         }
         current_layer.end_text_section();
         current_layer.begin_text_section();
         {
+            // Header. TODO: Right-align this text.
+            current_layer.set_text_cursor(
+                A5_WIDTH - (A5_MARGIN + (Pt(15.0) * 8.0).into()),
+                A5_HEIGHT - (current_y + Pt(10.0).into()),
+            );
+            current_layer.set_font(&text_font, 20.0);
+            current_layer.set_fill_color(colours::KEY_SHARD_TRIM);
+            current_layer.write_text("Key Shard", &text_font);
+            current_layer.set_fill_color(colours::BLACK);
+            current_layer.set_line_height(10.0 + 2.0);
+            current_layer.add_line_break();
+
+            current_layer.set_font(&monospace_font, 10.0);
+            current_layer.set_fill_color(colours::GREY);
+            current_layer.write_text("paperback-v0", &monospace_font);
+            current_layer.set_fill_color(colours::BLACK);
+            current_layer.set_line_height(10.0 + 2.0);
+        }
+        current_layer.end_text_section();
+        current_layer.begin_text_section();
+        {
+            current_layer.set_text_cursor(
+                A5_MARGIN + Mm(45.0),
+                A5_HEIGHT - (current_y + (Pt(12.0) * 5.0).into()),
+            );
+
             // Details.
-            current_layer.set_text_cursor(MARGIN + Mm(45.0), A5_HEIGHT - current_y);
             current_layer.set_font(&text_font, 10.0);
-            current_layer.set_line_height(10.0 + 5.0);
+            current_layer.set_line_height(10.0 + 2.0);
             current_layer.write_text("This is a key shard of a paperback backup.", &text_font);
             current_layer.add_line_break();
             current_layer.write_text("See cyphar.com/paperback for more details.", &text_font);
         }
         current_layer.end_text_section();
-
         current_y += Mm(40.0);
+
         {
             let data_qr_ref = data_qr.into_xobject(&current_layer);
 
@@ -401,27 +478,29 @@ impl ToPdf for (&EncryptedKeyShard, &KeyShardCodewords) {
             );
 
             // Shard data.
-            data_qr_ref.add_to_layer(
+            let text_height = text_fallback(
                 &current_layer,
-                SvgTransform {
-                    translate_x: Some(MARGIN),
-                    translate_y: Some(A5_HEIGHT - (current_y + target_size)),
-                    scale_x: Some(scale_x),
-                    scale_y: Some(scale_y),
-                    ..Default::default()
-                },
-            );
-            text_fallback(
-                &current_layer,
-                (MARGIN + A5_WIDTH * 0.32, A5_HEIGHT - current_y),
+                (A5_MARGIN + A5_WIDTH * 0.32, A5_HEIGHT - current_y),
                 A5_WIDTH,
                 data_qr_data,
                 &monospace_font,
                 8.0,
             );
+            data_qr_ref.add_to_layer(
+                &current_layer,
+                SvgTransform {
+                    translate_x: Some(A5_MARGIN),
+                    translate_y: Some(
+                        A5_HEIGHT - (current_y + target_size / 2.0 + text_height / 2.0),
+                    ),
+                    scale_x: Some(scale_x),
+                    scale_y: Some(scale_y),
+                    ..Default::default()
+                },
+            );
+            current_y += text_height + A5_MARGIN;
         }
 
-        current_y += Mm(60.0);
         {
             let chksum_qr_ref = chksum_qr.into_xobject(&current_layer);
 
@@ -432,64 +511,95 @@ impl ToPdf for (&EncryptedKeyShard, &KeyShardCodewords) {
             );
 
             // Shard checksum.
-            chksum_qr_ref.add_to_layer(
-                &current_layer,
-                SvgTransform {
-                    translate_x: Some(MARGIN),
-                    translate_y: Some(A5_HEIGHT - (current_y + target_size)),
-                    scale_x: Some(scale_x),
-                    scale_y: Some(scale_y),
-                    ..Default::default()
-                },
-            );
             text_fallback(
                 &current_layer,
                 (
-                    MARGIN + A5_WIDTH * 0.32,
-                    A5_HEIGHT - (current_y + target_size / 2.0 - Mm(1.0)),
+                    A5_MARGIN + A5_WIDTH * 0.32,
+                    A5_HEIGHT - (current_y + target_size / 2.0 - (Pt(8.0) * 2.0).into()),
                 ),
                 A5_WIDTH,
                 chksum_qr_data,
                 &monospace_font,
                 8.0,
             );
+            chksum_qr_ref.add_to_layer(
+                &current_layer,
+                SvgTransform {
+                    translate_x: Some(A5_MARGIN),
+                    translate_y: Some(A5_HEIGHT - (current_y + target_size)),
+                    scale_x: Some(scale_x),
+                    scale_y: Some(scale_y),
+                    ..Default::default()
+                },
+            );
+            current_y += target_size;
+        }
+
+        // "Cut here" line.
+        let cut_here_y = {
+            let old_current_y = current_y;
+            current_y = A5_HEIGHT - Mm(35.0); // For shard codewords.
+            (current_y + old_current_y) / 2.0
+        };
+        {
+            let points = vec![
+                (Point::new(Mm(0.0), A5_HEIGHT - cut_here_y), false),
+                (Point::new(A5_WIDTH, A5_HEIGHT - cut_here_y), false),
+            ];
+            let line = Line {
+                points,
+                is_closed: false,
+                has_fill: false,
+                has_stroke: true,
+                is_clipping_path: false,
+            };
+
+            let mut dash_pattern = LineDashPattern::default();
+            dash_pattern.dash_1 = Some(2);
+
+            //current_layer.set_fill_color(colours::KEY_SHARD_TRIM);
+            current_layer.set_outline_color(colours::KEY_SHARD_TRIM);
+            current_layer.set_line_dash_pattern(dash_pattern);
+            current_layer.add_shape(line);
+            //current_layer.set_fill_color(colours::BLACK);
         }
 
         // Shard codewords.
-        current_y = A5_HEIGHT - Mm(40.0);
         current_layer.begin_text_section();
         {
-            current_layer.set_font(&monospace_font, 10.0);
             current_layer.set_word_spacing(1.2);
             current_layer.set_character_spacing(1.0);
-            current_layer.set_line_height(10.0 + 5.0);
-
-            current_layer.set_text_cursor(MARGIN, A5_HEIGHT - current_y);
+            current_layer.set_text_cursor(A5_MARGIN, A5_HEIGHT - current_y);
 
             // "Document".
-            current_layer.set_font(&monospace_font, 10.0);
+            current_layer.set_font(&text_font, 10.0);
             current_layer.set_fill_color(colours::GREY);
-            current_layer.write_text("Document", &monospace_font);
+            current_layer.write_text("Document", &text_font);
             current_layer.set_fill_color(colours::BLACK);
+            current_layer.set_line_height(20.0 + 2.0);
             current_layer.add_line_break();
             // <document id>
             current_layer.set_font(&monospace_font, 20.0);
             current_layer.set_fill_color(colours::MAIN_DOCUMENT_TRIM);
             current_layer.write_text(decrypted_shard.document_id(), &monospace_font);
             current_layer.set_fill_color(colours::BLACK);
+            current_layer.set_line_height(10.0 + 2.0);
+            current_layer.add_line_break();
             current_layer.add_line_break();
 
             // "Shard".
-            current_layer.set_font(&monospace_font, 10.0);
+            current_layer.set_font(&text_font, 10.0);
             current_layer.set_fill_color(colours::GREY);
-            current_layer.write_text("Shard", &monospace_font);
+            current_layer.write_text("Shard", &text_font);
             current_layer.set_fill_color(colours::BLACK);
+            current_layer.set_line_height(20.0 + 2.0);
             current_layer.add_line_break();
             // <shard id>
             current_layer.set_font(&monospace_font, 20.0);
             current_layer.set_fill_color(colours::KEY_SHARD_TRIM);
             current_layer.write_text(decrypted_shard.id(), &monospace_font);
             current_layer.set_fill_color(colours::BLACK);
+            current_layer.set_line_height(10.0 + 2.0);
             current_layer.add_line_break();
         }
         current_layer.end_text_section();
@@ -497,11 +607,11 @@ impl ToPdf for (&EncryptedKeyShard, &KeyShardCodewords) {
         {
             current_layer.set_word_spacing(1.2);
             current_layer.set_character_spacing(1.0);
-            current_layer.set_line_height(10.0 + 5.0);
+            current_layer.set_text_cursor(A5_MARGIN + Mm(45.0), A5_HEIGHT - current_y);
 
             // Codewords.
             current_layer.set_font(&monospace_font, 10.0);
-            current_layer.set_text_cursor(MARGIN + Mm(45.0), A5_HEIGHT - current_y);
+            current_layer.set_line_height(10.0 + 5.0);
             for (i, codeword) in codewords.iter().enumerate() {
                 let font = if i % 2 == 0 {
                     current_layer.set_font(&monospace_font, 10.0);
