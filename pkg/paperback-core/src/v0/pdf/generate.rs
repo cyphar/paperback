@@ -157,6 +157,7 @@ fn text_fallback<D: AsRef<[u8]>>(
 const A4_WIDTH: Mm = Mm(210.0);
 const A4_HEIGHT: Mm = Mm(297.0);
 const A4_MARGIN: Mm = Mm(10.0);
+const QR_MARGIN: Mm = Mm(5.0);
 
 const FONT_ROBOTOSLAB: &[u8] = include_bytes!("fonts/RobotoSlab-Regular.ttf");
 const FONT_B612MONO: &[u8] = include_bytes!("fonts/B612Mono-Regular.ttf");
@@ -263,11 +264,7 @@ impl ToPdf for MainDocument {
             current_layer.set_line_height(10.0 + 2.0);
         }
         current_layer.end_text_section();
-
-        let data_qr_refs = data_qrs
-            .into_iter()
-            .map(|code| code.into_xobject(&current_layer))
-            .collect::<Vec<_>>();
+        current_y += (Pt(22.0) + Pt(12.0) * 6.0).into();
 
         // TODO: Get rid of this once we have nice QR code scanning.
         println!("Main Document:");
@@ -275,36 +272,95 @@ impl ToPdf for MainDocument {
             .iter()
             .for_each(|code| println!("{}", multibase::encode(multibase::Base::Base10, code)));
 
-        current_y += (Pt(22.0) + Pt(12.0) * 6.0).into();
-
         let mut current_x = A4_MARGIN;
-        for svg in data_qr_refs {
+        let mut data_qr_refs = data_qrs
+            .into_iter()
+            .map(|code| code.into_xobject(&current_layer));
+        for _ in 0..9 {
             let target_size = (A4_WIDTH - A4_MARGIN * 2.0) / 3.0;
-            let (width, height) = (svg.width, svg.height);
-            let (scale_x, scale_y) = (
-                target_size / px_to_mm(width),
-                target_size / px_to_mm(height),
-            );
             if current_x + target_size > A4_WIDTH {
                 current_x = A4_MARGIN;
                 current_y += target_size;
             }
-            svg.add_to_layer(
-                &current_layer,
-                SvgTransform {
-                    translate_x: Some(current_x),
-                    translate_y: Some(A4_HEIGHT - (current_y + target_size)),
-                    dpi: Some(SVG_DPI),
-                    scale_x: Some(scale_x),
-                    scale_y: Some(scale_y),
-                    ..Default::default()
-                },
-            );
+            match data_qr_refs.next() {
+                Some(svg) => {
+                    let (width, height) = (svg.width, svg.height);
+                    let (scale_x, scale_y) = (
+                        target_size / px_to_mm(width),
+                        target_size / px_to_mm(height),
+                    );
+                    svg.add_to_layer(
+                        &current_layer,
+                        SvgTransform {
+                            translate_x: Some(current_x),
+                            translate_y: Some(A4_HEIGHT - (current_y + target_size)),
+                            dpi: Some(SVG_DPI),
+                            scale_x: Some(scale_x),
+                            scale_y: Some(scale_y),
+                            ..Default::default()
+                        },
+                    );
+                }
+                None => {
+                    // Dashed line box where the QR code would go.
+                    let points = vec![
+                        (
+                            Point::new(
+                                current_x + QR_MARGIN / 2.0,
+                                A4_HEIGHT - (current_y + QR_MARGIN / 2.0),
+                            ),
+                            false,
+                        ),
+                        (
+                            Point::new(
+                                current_x + target_size - QR_MARGIN / 2.0,
+                                A4_HEIGHT - (current_y + QR_MARGIN / 2.0),
+                            ),
+                            false,
+                        ),
+                        (
+                            Point::new(
+                                current_x + target_size - QR_MARGIN / 2.0,
+                                A4_HEIGHT - (current_y + target_size - QR_MARGIN / 2.0),
+                            ),
+                            false,
+                        ),
+                        (
+                            Point::new(
+                                current_x + QR_MARGIN / 2.0,
+                                A4_HEIGHT - (current_y + target_size - QR_MARGIN / 2.0),
+                            ),
+                            false,
+                        ),
+                    ];
+
+                    let line = Line {
+                        points,
+                        is_closed: true,
+                        has_fill: false,
+                        has_stroke: true,
+                        is_clipping_path: false,
+                    };
+
+                    let mut dash_pattern = LineDashPattern::default();
+                    dash_pattern.dash_1 = Some(6);
+                    dash_pattern.gap_1 = Some(4);
+
+                    current_layer.set_outline_color(colours::LIGHT_GREY);
+                    current_layer.set_line_dash_pattern(dash_pattern);
+                    current_layer.add_shape(line);
+                }
+            };
             current_x += target_size;
             if current_x > A4_WIDTH {
                 current_x = Mm(0.0);
                 current_y += target_size;
             }
+        }
+        if data_qr_refs.next().is_some() {
+            return Err(Error::TooManyCodes(
+                "only 9 codes allowed in this version of paperback".to_string(),
+            ));
         }
 
         current_y = A4_HEIGHT - (A4_WIDTH * 0.2 + A4_MARGIN);
