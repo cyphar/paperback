@@ -26,19 +26,13 @@ use unsigned_varint::encode as varuint_encode;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub(super) enum PartType {
-    MainDocumentData,     // 'D'
-    MainDocumentChecksum, // 'C'
-    KeyShardData,         // 'd'
-    KeyShardChecksum,     // 'c'
+    MainDocumentData, // 'D'
 }
 
 impl ToWire for PartType {
     fn to_wire(&self) -> Vec<u8> {
         match self {
             Self::MainDocumentData => "D",
-            Self::MainDocumentChecksum => "C",
-            Self::KeyShardData => "d",
-            Self::KeyShardChecksum => "c",
         }
         .into()
     }
@@ -48,9 +42,6 @@ impl FromWire for PartType {
     fn from_wire_partial(input: &[u8]) -> Result<(&[u8], Self), String> {
         match input.split_first() {
             Some((b'D', input)) => Ok((input, Self::MainDocumentData)),
-            Some((b'C', input)) => Ok((input, Self::MainDocumentChecksum)),
-            Some((b'd', input)) => Ok((input, Self::KeyShardData)),
-            Some((b'c', input)) => Ok((input, Self::KeyShardChecksum)),
             None => Err("".into()), // TODO
             Some(_) => Err("".into()),
         }
@@ -281,10 +272,7 @@ pub(super) fn generate_codes<B: AsRef<[u8]>>(
     ))
 }
 
-pub(super) fn generate_one_code<B: AsRef<[u8]>>(
-    _data_type: PartType, // TODO
-    data: B,
-) -> Result<(QrCode, Vec<u8>), Error> {
+pub(super) fn generate_one_code<B: AsRef<[u8]>>(data: B) -> Result<(QrCode, Vec<u8>), Error> {
     // NOTE: We don't use a split code for single-QR-code data segments. The
     // reason for this is that the part header takes up space, and it also
     // causes checksums to be encoded differently (meaning that the document ID

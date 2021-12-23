@@ -484,9 +484,6 @@ serialisation for each chunk of data being encoded. For each chunk of the data
    | Byte   | ASCII | Description             |
    |:-------|:-----:|:------------------------|
    | `0x44` | `D`   | Main document data.     |
-   | `0x43` | `C`   | Main document checksum. |
-   | `0x64` | `d`   | Key shard data.         |
-   | `0x63` | `c`   | Key shard checksum.     |
  * `nth-chunk` is the `0`-indexed index of the current chunk, represented as an
    [unsigned varint][unsigned-varint].
  * `N-chunks` is the number of data chunks that need to be scanned, represented

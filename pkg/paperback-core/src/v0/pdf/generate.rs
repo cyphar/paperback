@@ -174,8 +174,7 @@ impl ToPdf for MainDocument {
             .collect::<Result<Vec<_>, _>>()
             .map_err(Error::ParseSvg)?; // TODO: Use (#[from] SvgParseError);
 
-        let (chksum_qr, chksum_qr_data) =
-            qr::generate_one_code(PartType::MainDocumentChecksum, &self.checksum().to_bytes())?;
+        let (chksum_qr, chksum_qr_data) = qr::generate_one_code(&self.checksum().to_bytes())?;
         let chksum_qr =
             Svg::parse(&chksum_qr.render::<svg::Color>().build()).map_err(Error::ParseSvg)?; // TODO: Use (#[from] SvgParseError);
 
@@ -365,13 +364,11 @@ impl ToPdf for (&EncryptedKeyShard, &KeyShardCodewords) {
             .map_err(|err| Error::OtherError(format!("failed to decrypt shard: {:?}", err)))?;
 
         // Generate QR codes to embed in the PDF.
-        let (data_qr, data_qr_data) =
-            qr::generate_one_code(PartType::KeyShardData, shard.to_wire())?;
+        let (data_qr, data_qr_data) = qr::generate_one_code(shard.to_wire())?;
         let data_qr =
             Svg::parse(&data_qr.render::<svg::Color>().build()).map_err(Error::ParseSvg)?; // TODO: Use (#[from] SvgParseError);
 
-        let (chksum_qr, chksum_qr_data) =
-            qr::generate_one_code(PartType::KeyShardChecksum, &shard.checksum().to_bytes())?;
+        let (chksum_qr, chksum_qr_data) = qr::generate_one_code(&shard.checksum().to_bytes())?;
         let chksum_qr =
             Svg::parse(&chksum_qr.render::<svg::Color>().build()).map_err(Error::ParseSvg)?; // TODO: Use (#[from] SvgParseError);
 
