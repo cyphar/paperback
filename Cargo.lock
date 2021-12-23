@@ -927,8 +927,7 @@ checksum = "ed0cfbc8191465bed66e1718596ee0b0b35d5ee1f41c5df2189d0fe8bde535ba"
 [[package]]
 name = "printpdf"
 version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0980df987fbe1a966101e137ca7ce6e2b46cea2527232e0c3e87537e97ee989d"
+source = "git+https://github.com/cyphar/printpdf?branch=svg-bbox#d79c8a28764de15edc5553bb4f90b4f6d72b1357"
 dependencies = [
  "js-sys",
  "lopdf",
@@ -1354,9 +1353,9 @@ dependencies = [
 
 [[package]]
 name = "syn"
-version = "1.0.82"
+version = "1.0.83"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8daf5dd0bb60cbd4137b1b587d2fc0ae729bc07cf01cd70b36a1ed5ade3b9d59"
+checksum = "23a1dfb999630e338648c83e91c59a4e9fb7620f520c3194b6b89e276f2f1959"
 dependencies = [
  "proc-macro2",
  "quote",

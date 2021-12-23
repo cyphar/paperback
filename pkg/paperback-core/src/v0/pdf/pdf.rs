@@ -39,6 +39,7 @@ const SVG_DPI: f64 = 300.0;
 mod colours {
     use printpdf::*;
 
+    // #000000
     pub(super) const BLACK: Color = Color::Rgb(Rgb {
         r: 0.0,
         g: 0.0,
@@ -46,6 +47,7 @@ mod colours {
         icc_profile: None,
     });
 
+    // #666666
     pub(super) const GREY: Color = Color::Rgb(Rgb {
         r: 0.4,
         g: 0.4,
@@ -53,6 +55,7 @@ mod colours {
         icc_profile: None,
     });
 
+    // #999999
     pub(super) const LIGHT_GREY: Color = Color::Rgb(Rgb {
         r: 0.6,
         g: 0.6,
@@ -60,6 +63,7 @@ mod colours {
         icc_profile: None,
     });
 
+    // #ff6600
     pub(super) const MAIN_DOCUMENT_TRIM: Color = Color::Rgb(Rgb {
         r: 1.0,
         g: 0.4,
@@ -67,6 +71,7 @@ mod colours {
         icc_profile: None,
     });
 
+    // #2c9f2c
     pub(super) const KEY_SHARD_TRIM: Color = Color::Rgb(Rgb {
         r: 0.17255,
         g: 0.62745,
@@ -279,8 +284,8 @@ impl ToPdf for MainDocument {
             let target_size = (A4_WIDTH - A4_MARGIN * 2.0) / 3.0;
             let (width, height) = (svg.width, svg.height);
             let (scale_x, scale_y) = (
-                target_size.0 / px_to_mm(width).0,
-                target_size.0 / px_to_mm(height).0,
+                target_size / px_to_mm(width),
+                target_size / px_to_mm(height),
             );
             if current_x + target_size > A4_WIDTH {
                 current_x = A4_MARGIN;
@@ -310,8 +315,8 @@ impl ToPdf for MainDocument {
 
             let target_size = A4_WIDTH * 0.2;
             let (scale_x, scale_y) = (
-                target_size.0 / px_to_mm(chksum_code_ref.width).0,
-                target_size.0 / px_to_mm(chksum_code_ref.height).0,
+                target_size / px_to_mm(chksum_code_ref.width),
+                target_size / px_to_mm(chksum_code_ref.height),
             );
 
             // Document checksum.
@@ -346,6 +351,8 @@ impl ToPdf for MainDocument {
 const A5_WIDTH: Mm = Mm(148.0);
 const A5_HEIGHT: Mm = Mm(210.0);
 const A5_MARGIN: Mm = Mm(5.0);
+
+const SCISSORS_SVG: &str = include_str!("scissors.svg");
 
 impl ToPdf for (&EncryptedKeyShard, &KeyShardCodewords) {
     fn to_pdf(&self) -> Result<PdfDocumentReference, Error> {
@@ -473,8 +480,8 @@ impl ToPdf for (&EncryptedKeyShard, &KeyShardCodewords) {
 
             let target_size = A5_WIDTH * 0.3;
             let (scale_x, scale_y) = (
-                target_size.0 / px_to_mm(data_qr_ref.width).0,
-                target_size.0 / px_to_mm(data_qr_ref.height).0,
+                target_size / px_to_mm(data_qr_ref.width),
+                target_size / px_to_mm(data_qr_ref.height),
             );
 
             // Shard data.
@@ -506,8 +513,8 @@ impl ToPdf for (&EncryptedKeyShard, &KeyShardCodewords) {
 
             let target_size = A5_WIDTH * 0.3;
             let (scale_x, scale_y) = (
-                target_size.0 / px_to_mm(chksum_qr_ref.width).0,
-                target_size.0 / px_to_mm(chksum_qr_ref.height).0,
+                target_size / px_to_mm(chksum_qr_ref.width),
+                target_size / px_to_mm(chksum_qr_ref.height),
             );
 
             // Shard checksum.
@@ -542,6 +549,16 @@ impl ToPdf for (&EncryptedKeyShard, &KeyShardCodewords) {
             (current_y + old_current_y) / 2.0
         };
         {
+            let scissors_svg = Svg::parse(SCISSORS_SVG).map_err(Error::ParseSvg)?; // TODO: Use (#[from] SvgParseError);
+            let scissors_svg_ref = scissors_svg.into_xobject(&current_layer);
+
+            // For scissors, scale the height then retain the height:width ratio.
+            let target_height = Mm(5.0);
+            let scale_y = target_height / px_to_mm(scissors_svg_ref.height);
+            let scale_x =
+                scale_y * (scissors_svg_ref.width.0 as f64 / scissors_svg_ref.height.0 as f64);
+
+            // Dashed line.
             let points = vec![
                 (Point::new(Mm(0.0), A5_HEIGHT - cut_here_y), false),
                 (Point::new(A5_WIDTH, A5_HEIGHT - cut_here_y), false),
@@ -555,13 +572,24 @@ impl ToPdf for (&EncryptedKeyShard, &KeyShardCodewords) {
             };
 
             let mut dash_pattern = LineDashPattern::default();
-            dash_pattern.dash_1 = Some(2);
+            dash_pattern.dash_1 = Some(6);
+            dash_pattern.gap_1 = Some(4);
 
-            //current_layer.set_fill_color(colours::KEY_SHARD_TRIM);
             current_layer.set_outline_color(colours::KEY_SHARD_TRIM);
             current_layer.set_line_dash_pattern(dash_pattern);
             current_layer.add_shape(line);
-            //current_layer.set_fill_color(colours::BLACK);
+
+            // Scissors.
+            scissors_svg_ref.add_to_layer(
+                &current_layer,
+                SvgTransform {
+                    translate_x: Some(A5_MARGIN),
+                    translate_y: Some(A5_HEIGHT - (cut_here_y + target_height / 2.0)),
+                    scale_x: Some(scale_x),
+                    scale_y: Some(scale_y),
+                    ..Default::default()
+                },
+            );
         }
 
         // Shard codewords.

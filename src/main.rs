@@ -157,14 +157,17 @@ fn recover(matches: &ArgMatches<'_>) -> Result<(), Error> {
 
     let main_document: MainDocument = read_multibase_qr("Main Document")?;
     let quorum_size = main_document.quorum_size();
-    println!("Document ID: {}", main_document.id());
     // TODO: Ask the user to input the checksum...
     println!("Document Checksum: {}", main_document.checksum_string());
+
+    println!("Document ID: {}", main_document.id());
+    println!("{} Shards Required", quorum_size);
 
     let mut quorum = UntrustedQuorum::new();
     quorum.main_document(main_document);
     for idx in 0..quorum_size {
-        let encrypted_shard: EncryptedKeyShard = read_multibase(format!("Shard {}", idx + 1))?;
+        let encrypted_shard: EncryptedKeyShard =
+            read_multibase(format!("Shard {} of {}", idx + 1, quorum_size))?;
         // TODO: Ask the user to input the checksum...
         println!(
             "Shard {} Checksum: {}",
@@ -224,7 +227,10 @@ fn expand(matches: &ArgMatches<'_>) -> Result<(), Error> {
 
     let mut quorum = UntrustedQuorum::new();
     for idx in 0.. {
-        let encrypted_shard: EncryptedKeyShard = read_multibase(format!("Shard {}", idx + 1))?;
+        let encrypted_shard: EncryptedKeyShard = read_multibase(match quorum.quorum_size() {
+            None => format!("Shard {}", idx + 1),
+            Some(n) => format!("Shard {} of {}", idx + 1, n),
+        })?;
         // TODO: Ask the user to input the checksum...
         println!(
             "Shard {} Checksum: {}",
