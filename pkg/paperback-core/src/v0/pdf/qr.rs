@@ -185,7 +185,7 @@ impl Joiner {
 
     pub fn remaining(&self) -> Option<usize> {
         self.meta
-            .and_then(|_| Some(self.parts.iter().filter(|v| v.is_none()).count()))
+            .map(|_| self.parts.iter().filter(|v| v.is_none()).count())
     }
 
     pub fn complete(&self) -> bool {
@@ -229,10 +229,8 @@ impl Joiner {
             }
         }
         let mut bytes = Vec::with_capacity(data_len);
-        for part in &self.parts {
-            if let Some(part) = part {
-                bytes.extend_from_slice(&part.data)
-            }
+        for part in self.parts.iter().flatten() {
+            bytes.extend_from_slice(&part.data)
         }
         Ok(bytes)
     }
@@ -256,7 +254,7 @@ fn split_data<B: AsRef<[u8]>>(data_type: PartType, data: B) -> Vec<Part> {
         .map(|(idx, &chunk)| Part {
             meta: PartMeta {
                 version: PAPERBACK_VERSION,
-                data_type: data_type,
+                data_type,
                 num_parts: chunks.len(),
             },
             part_idx: idx,

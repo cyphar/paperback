@@ -96,7 +96,7 @@ fn text_fallback<D: AsRef<[u8]>>(
         // Split the encoded version into 4-char words.
         .into_bytes()
         .chunks(4)
-        .map(|cs| String::from_utf8_lossy(cs))
+        .map(String::from_utf8_lossy)
         .collect::<Vec<_>>()
         // Split the words into rows for printing.
         // TODO: Calculate the right width dynamically using azul-text-layout.
@@ -106,10 +106,9 @@ fn text_fallback<D: AsRef<[u8]>>(
         // words get selected as if they were columns (breaking copy-and-paste
         // for these data sections).
         .map(|ws| ws.join("-"))
-        .map(|line| match line.len() {
+        .map(|mut line| match line.len() {
             39 /* 4*8+7 */ => line, // Line is the right length.
             l @ 0..=38 => { // Line needs to be padded.
-                let mut line = line.clone();
                 line.push_str(&"-".repeat(39-l));
                 line
             },
@@ -648,11 +647,11 @@ impl ToPdf for (&EncryptedKeyShard, &KeyShardCodewords) {
                     current_layer.set_font(&monospace_bold_font, 10.0);
                     &monospace_bold_font
                 };
-                current_layer.write_text(codeword, &font);
+                current_layer.write_text(codeword, font);
                 if i % 5 == 4 {
                     current_layer.add_line_break();
                 } else {
-                    current_layer.write_text(" ", &font);
+                    current_layer.write_text(" ", font);
                 }
             }
         }

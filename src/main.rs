@@ -109,21 +109,18 @@ fn read_multiline<S: AsRef<str>>(prompt: S) -> Result<String, Error> {
     let buffer_stdin = BufReader::new(io::stdin());
     Ok(buffer_stdin
         .lines()
-        .take_while(|s| match s.as_deref() {
-            Ok("") | Err(_) => false,
-            _ => true,
-        })
+        .take_while(|s| !matches!(s.as_deref(), Ok("") | Err(_)))
         .collect::<Result<Vec<_>, _>>()
         .map_err(|err| anyhow!("failed to read data: {}", err))?
         .join("\n"))
 }
 
 fn read_multibase<S: AsRef<str>, T: FromWire>(prompt: S) -> Result<T, Error> {
-    Ok(T::from_wire_multibase(
+    T::from_wire_multibase(
         wire::multibase_strip(read_multiline(prompt)?)
             .map_err(|err| anyhow!("failed to strip out non-multibase characters: {}", err))?,
     )
-    .map_err(|err| anyhow!("failed to parse data: {}", err))?)
+    .map_err(|err| anyhow!("failed to parse data: {}", err))
 }
 
 fn read_codewords<S: AsRef<str>>(prompt: S) -> Result<KeyShardCodewords, Error> {

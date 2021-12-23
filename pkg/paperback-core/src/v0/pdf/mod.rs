@@ -16,10 +16,10 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-pub mod pdf;
+pub mod generate;
 pub mod qr;
 
-pub use pdf::ToPdf;
+pub use generate::ToPdf;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
