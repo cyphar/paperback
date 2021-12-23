@@ -1,0 +1,79 @@
+# paperback: paper backup generator suitable for long-term storage
+# Copyright (C) 2018-2020 Aleksa Sarai <cyphar@cyphar.com>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+on:
+  push:
+    branches: [ main ]
+  release:
+    types: [ published ]
+
+name: binaries
+
+jobs:
+  build:
+    name: build
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        build: [linux, linux-arm, macos, win-msvc, win32-msvc]
+        include:
+        - build: linux
+          os: ubuntu-latest
+          target: x86_64-unknown-linux-musl
+        - build: linux-arm
+          os: ubuntu-latest
+          target: arm-unknown-linux-gnueabihf
+        - build: macos
+          os: macos-latest
+          target: x86_64-apple-darwin
+        - build: win-msvc
+          os: windows-2019
+          target: x86_64-pc-windows-msvc
+        - build: win32-msvc
+          os: windows-2019
+          target: i686-pc-windows-msvc
+
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 1
+
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        profile: minimal
+        override: true
+        target: ${{ matrix.target }}
+
+    - name: cargo build
+      run: cargo build --release --all-features
+
+    - name: strip paperback binary
+      if: matrix.build == 'linux' || matrix.build == 'macos'
+      run: strip target/release/paperback
+
+    - name: upload unix binaries
+      uses: actions/upload-artifact@v2
+      if: contains(matrix.build, 'win') == false
+      with:
+        name: "paperback.${{ matrix.target }}"
+        path: "target/release/paperback"
+    - name: upload windows binaries
+      uses: actions/upload-artifact@v2
+      if: contains(matrix.build, 'win')
+      with:
+        name: "paperback-${{ matrix.target }}.exe"
+        path: "target/release/paperback.exe"
