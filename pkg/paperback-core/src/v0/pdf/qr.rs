@@ -295,3 +295,23 @@ pub(super) fn generate_one_code<B: AsRef<[u8]>>(
         data.to_vec(),
     ))
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    use quickcheck::*;
+    use rand::seq::SliceRandom;
+
+    #[quickcheck]
+    fn split_join_qr_parts(data: Vec<u8>) -> Result<bool, Error> {
+        let mut parts = split_data(PartType::MainDocumentData, &data);
+        let mut joiner = Joiner::new();
+
+        parts.shuffle(&mut rand::thread_rng());
+        for part in parts {
+            joiner.add_part(part)?;
+        }
+        Ok(joiner.combine_parts()? == data)
+    }
+}
