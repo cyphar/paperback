@@ -84,14 +84,21 @@ fn px_to_mm(px: Px) -> Mm {
     px.into_pt(SVG_DPI).into()
 }
 
-fn text_fallback<D: AsRef<[u8]>>(
+fn qr_with_fallback<D: AsRef<[u8]>>(
     layer: &PdfLayerReference,
-    (x, y): (Mm, Mm),
-    _width: Mm,
+    top: Mm,
+    (width, margin, qr_fraction): (Mm, Mm, f64),
     data: D,
     font: &IndirectFontRef,
     font_size: f64,
-) -> Mm {
+) -> Result<Mm, Error> {
+    let data = data.as_ref();
+    let qr_size = width * qr_fraction;
+
+    // TODO: Use azul-text-layout for this function so that we get line wrapping
+    // done for us, as well as being able to use the computed text dimensions to
+    // vertically center and horizontally right-adjust the fallback text.
+
     let data_lines = multibase::encode(Base::Base32Z, data)
         // Split the encoded version into 4-char words.
         .into_bytes()
@@ -99,7 +106,6 @@ fn text_fallback<D: AsRef<[u8]>>(
         .map(String::from_utf8_lossy)
         .collect::<Vec<_>>()
         // Split the words into rows for printing.
-        // TODO: Calculate the right width dynamically using azul-text-layout.
         .chunks(8)
         // Join the words with "-". This is to work around the fact that
         // printpdf appears to generate PDFs such that horizontally-written
@@ -116,6 +122,41 @@ fn text_fallback<D: AsRef<[u8]>>(
         })
         .collect::<Vec<String>>();
 
+    let data_height = Mm::from(Pt(font_size + 2.0)) * (data_lines.len() as f64);
+    // Can't use std::cmp::max sadly.
+    let total_height = if qr_size > data_height {
+        qr_size
+    } else {
+        data_height
+    };
+
+    let (qr_y, data_y) = (
+        total_height / 2.0 + qr_size / 2.0,
+        total_height / 2.0 - data_height / 2.0,
+    );
+    let (qr_x, data_x) = (margin, margin + qr_size + margin);
+
+    // Display svg.
+    let qr_svg = Svg::parse(&qr::generate_one_code(data)?.render::<svg::Color>().build())
+        .map_err(Error::ParseSvg)? // TODO: Use (#[from] SvgParseError)
+        .into_xobject(layer);
+    let (scale_x, scale_y) = (
+        qr_size / px_to_mm(qr_svg.width),
+        qr_size / px_to_mm(qr_svg.height),
+    );
+    qr_svg.add_to_layer(
+        layer,
+        SvgTransform {
+            translate_x: Some(qr_x),
+            translate_y: Some(top - qr_y),
+            dpi: Some(SVG_DPI),
+            scale_x: Some(scale_x),
+            scale_y: Some(scale_y),
+            ..Default::default()
+        },
+    );
+
+    // Display the fallback text.
     layer.begin_text_section();
     {
         layer.set_font(font, font_size - 2.0);
@@ -124,7 +165,7 @@ fn text_fallback<D: AsRef<[u8]>>(
         layer.set_character_spacing(1.0);
         layer.set_text_rendering_mode(TextRenderingMode::Fill);
 
-        layer.set_text_cursor(x, y);
+        layer.set_text_cursor(data_x, top - data_y);
         layer.set_fill_color(colours::LIGHT_GREY);
         layer.write_text("text fallback if barcode scanning fails", font);
     }
@@ -137,7 +178,7 @@ fn text_fallback<D: AsRef<[u8]>>(
         layer.set_character_spacing(1.0);
         layer.set_text_rendering_mode(TextRenderingMode::Fill);
 
-        layer.set_text_cursor(x, y);
+        layer.set_text_cursor(data_x, top - data_y);
         layer.add_line_break();
         for (i, line) in data_lines.iter().enumerate() {
             if i % 2 == 0 {
@@ -151,7 +192,7 @@ fn text_fallback<D: AsRef<[u8]>>(
     }
     layer.end_text_section();
 
-    Mm::from(Pt(font_size + 2.0)) * (data_lines.len() as f64)
+    Ok(total_height)
 }
 
 const A4_WIDTH: Mm = Mm(210.0);
@@ -174,10 +215,6 @@ impl ToPdf for MainDocument {
             .map(|svg| Svg::parse(&svg))
             .collect::<Result<Vec<_>, _>>()
             .map_err(Error::ParseSvg)?; // TODO: Use (#[from] SvgParseError);
-
-        let (chksum_qr, chksum_qr_data) = qr::generate_one_code(&self.checksum().to_bytes())?;
-        let chksum_qr =
-            Svg::parse(&chksum_qr.render::<svg::Color>().build()).map_err(Error::ParseSvg)?; // TODO: Use (#[from] SvgParseError);
 
         // Construct an A4 PDF.
         let (doc, page1, layer1) = PdfDocument::new(
@@ -285,18 +322,14 @@ impl ToPdf for MainDocument {
             match data_qr_refs.next() {
                 Some(svg) => {
                     let (width, height) = (svg.width, svg.height);
-                    let (scale_x, scale_y) = (
-                        target_size / px_to_mm(width),
-                        target_size / px_to_mm(height),
-                    );
                     svg.add_to_layer(
                         &current_layer,
                         SvgTransform {
                             translate_x: Some(current_x),
                             translate_y: Some(A4_HEIGHT - (current_y + target_size)),
                             dpi: Some(SVG_DPI),
-                            scale_x: Some(scale_x),
-                            scale_y: Some(scale_y),
+                            scale_x: Some(target_size / px_to_mm(width)),
+                            scale_y: Some(target_size / px_to_mm(height)),
                             ..Default::default()
                         },
                     );
@@ -362,40 +395,17 @@ impl ToPdf for MainDocument {
                 "only 9 codes allowed in this version of paperback".to_string(),
             ));
         }
-
         current_y = A4_HEIGHT - (A4_WIDTH * 0.2 + A4_MARGIN);
-        {
-            let chksum_code_ref = chksum_qr.into_xobject(&current_layer);
 
-            let target_size = A4_WIDTH * 0.2;
-            let (scale_x, scale_y) = (
-                target_size / px_to_mm(chksum_code_ref.width),
-                target_size / px_to_mm(chksum_code_ref.height),
-            );
-
-            // Document checksum.
-            text_fallback(
-                &current_layer,
-                (
-                    A4_MARGIN + A4_WIDTH * 0.32,
-                    A4_HEIGHT - (current_y + target_size / 2.0 - (Pt(8.0) * 2.0).into()),
-                ),
-                A4_WIDTH,
-                chksum_qr_data,
-                &monospace_font,
-                10.0,
-            );
-            chksum_code_ref.add_to_layer(
-                &current_layer,
-                SvgTransform {
-                    translate_x: Some(A4_MARGIN),
-                    translate_y: Some(A4_HEIGHT - (current_y + target_size)),
-                    scale_x: Some(scale_x),
-                    scale_y: Some(scale_y),
-                    ..Default::default()
-                },
-            );
-        }
+        // Document checksum.
+        current_y += qr_with_fallback(
+            &current_layer,
+            A4_HEIGHT - current_y,
+            (A4_WIDTH, A4_MARGIN, 0.2),
+            self.checksum().to_bytes(),
+            &monospace_font,
+            10.0,
+        )?;
 
         doc.check_for_errors()?;
         Ok(doc)
@@ -418,15 +428,6 @@ impl ToPdf for (&EncryptedKeyShard, &KeyShardCodewords) {
         let decrypted_shard = shard
             .decrypt(codewords)
             .map_err(|err| Error::OtherError(format!("failed to decrypt shard: {:?}", err)))?;
-
-        // Generate QR codes to embed in the PDF.
-        let (data_qr, data_qr_data) = qr::generate_one_code(shard.to_wire())?;
-        let data_qr =
-            Svg::parse(&data_qr.render::<svg::Color>().build()).map_err(Error::ParseSvg)?; // TODO: Use (#[from] SvgParseError);
-
-        let (chksum_qr, chksum_qr_data) = qr::generate_one_code(&shard.checksum().to_bytes())?;
-        let chksum_qr =
-            Svg::parse(&chksum_qr.render::<svg::Color>().build()).map_err(Error::ParseSvg)?; // TODO: Use (#[from] SvgParseError);
 
         // Construct an A5 PDF.
         let (doc, page1, layer1) = PdfDocument::new(
@@ -527,72 +528,23 @@ impl ToPdf for (&EncryptedKeyShard, &KeyShardCodewords) {
         current_layer.end_text_section();
         current_y += Mm(40.0);
 
-        {
-            let data_qr_ref = data_qr.into_xobject(&current_layer);
+        current_y += qr_with_fallback(
+            &current_layer,
+            A5_HEIGHT - current_y,
+            (A5_WIDTH, A5_MARGIN, 0.3),
+            shard.to_wire(),
+            &monospace_font,
+            8.0,
+        )?;
 
-            let target_size = A5_WIDTH * 0.3;
-            let (scale_x, scale_y) = (
-                target_size / px_to_mm(data_qr_ref.width),
-                target_size / px_to_mm(data_qr_ref.height),
-            );
-
-            // Shard data.
-            let text_height = text_fallback(
-                &current_layer,
-                (A5_MARGIN + A5_WIDTH * 0.32, A5_HEIGHT - current_y),
-                A5_WIDTH,
-                data_qr_data,
-                &monospace_font,
-                8.0,
-            );
-            data_qr_ref.add_to_layer(
-                &current_layer,
-                SvgTransform {
-                    translate_x: Some(A5_MARGIN),
-                    translate_y: Some(
-                        A5_HEIGHT - (current_y + target_size / 2.0 + text_height / 2.0),
-                    ),
-                    scale_x: Some(scale_x),
-                    scale_y: Some(scale_y),
-                    ..Default::default()
-                },
-            );
-            current_y += text_height + A5_MARGIN;
-        }
-
-        {
-            let chksum_qr_ref = chksum_qr.into_xobject(&current_layer);
-
-            let target_size = A5_WIDTH * 0.3;
-            let (scale_x, scale_y) = (
-                target_size / px_to_mm(chksum_qr_ref.width),
-                target_size / px_to_mm(chksum_qr_ref.height),
-            );
-
-            // Shard checksum.
-            text_fallback(
-                &current_layer,
-                (
-                    A5_MARGIN + A5_WIDTH * 0.32,
-                    A5_HEIGHT - (current_y + target_size / 2.0 - (Pt(8.0) * 2.0).into()),
-                ),
-                A5_WIDTH,
-                chksum_qr_data,
-                &monospace_font,
-                8.0,
-            );
-            chksum_qr_ref.add_to_layer(
-                &current_layer,
-                SvgTransform {
-                    translate_x: Some(A5_MARGIN),
-                    translate_y: Some(A5_HEIGHT - (current_y + target_size)),
-                    scale_x: Some(scale_x),
-                    scale_y: Some(scale_y),
-                    ..Default::default()
-                },
-            );
-            current_y += target_size;
-        }
+        current_y += qr_with_fallback(
+            &current_layer,
+            A5_HEIGHT - current_y,
+            (A5_WIDTH, A5_MARGIN, 0.3),
+            shard.checksum().to_bytes(),
+            &monospace_font,
+            8.0,
+        )?;
 
         // "Cut here" line.
         let cut_here_y = {

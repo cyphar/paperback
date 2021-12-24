@@ -272,16 +272,12 @@ pub(super) fn generate_codes<B: AsRef<[u8]>>(
     ))
 }
 
-pub(super) fn generate_one_code<B: AsRef<[u8]>>(data: B) -> Result<(QrCode, Vec<u8>), Error> {
+pub(super) fn generate_one_code<B: AsRef<[u8]>>(data: B) -> Result<QrCode, Error> {
     // NOTE: We don't use a split code for single-QR-code data segments. The
     // reason for this is that the part header takes up space, and it also
     // causes checksums to be encoded differently (meaning that the document ID
     // would no longer be the last x characters of the hash).
-    let data = data.as_ref();
-    Ok((
-        QrCode::new(multibase::encode(QRCODE_MULTIBASE, data))?,
-        data.to_vec(),
-    ))
+    Ok(QrCode::new(multibase::encode(QRCODE_MULTIBASE, data))?)
 }
 
 #[cfg(test)]
