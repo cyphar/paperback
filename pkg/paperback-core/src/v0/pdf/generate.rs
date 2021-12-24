@@ -458,22 +458,6 @@ impl ToPdf for (&EncryptedKeyShard, &KeyShardCodewords) {
 
             current_layer.set_text_cursor(A5_MARGIN, A5_HEIGHT - current_y);
 
-            // "Document".
-            current_layer.set_font(&text_font, 10.0);
-            current_layer.set_fill_color(colours::GREY);
-            current_layer.write_text("Document", &text_font);
-            current_layer.set_fill_color(colours::BLACK);
-            current_layer.set_line_height(20.0 + 2.0);
-            current_layer.add_line_break();
-            // <document id>
-            current_layer.set_font(&monospace_font, 20.0);
-            current_layer.set_fill_color(colours::MAIN_DOCUMENT_TRIM);
-            current_layer.write_text(decrypted_shard.document_id(), &monospace_font);
-            current_layer.set_fill_color(colours::BLACK);
-            current_layer.set_line_height(10.0 + 2.0);
-            current_layer.add_line_break();
-            current_layer.add_line_break();
-
             // "Shard".
             current_layer.set_font(&text_font, 10.0);
             current_layer.set_fill_color(colours::GREY);
@@ -485,6 +469,22 @@ impl ToPdf for (&EncryptedKeyShard, &KeyShardCodewords) {
             current_layer.set_font(&monospace_font, 20.0);
             current_layer.set_fill_color(colours::KEY_SHARD_TRIM);
             current_layer.write_text(decrypted_shard.id(), &monospace_font);
+            current_layer.set_fill_color(colours::BLACK);
+            current_layer.set_line_height(10.0 + 2.0);
+            current_layer.add_line_break();
+            current_layer.add_line_break();
+
+            // "Document".
+            current_layer.set_font(&text_font, 10.0);
+            current_layer.set_fill_color(colours::GREY);
+            current_layer.write_text("Document", &text_font);
+            current_layer.set_fill_color(colours::BLACK);
+            current_layer.set_line_height(20.0 + 2.0);
+            current_layer.add_line_break();
+            // <document id>
+            current_layer.set_font(&monospace_font, 20.0);
+            current_layer.set_fill_color(colours::MAIN_DOCUMENT_TRIM);
+            current_layer.write_text(decrypted_shard.document_id(), &monospace_font);
             current_layer.set_fill_color(colours::BLACK);
             current_layer.set_line_height(10.0 + 2.0);
             current_layer.add_line_break();
@@ -603,22 +603,6 @@ impl ToPdf for (&EncryptedKeyShard, &KeyShardCodewords) {
             current_layer.set_character_spacing(1.0);
             current_layer.set_text_cursor(A5_MARGIN, A5_HEIGHT - current_y);
 
-            // "Document".
-            current_layer.set_font(&text_font, 10.0);
-            current_layer.set_fill_color(colours::GREY);
-            current_layer.write_text("Document", &text_font);
-            current_layer.set_fill_color(colours::BLACK);
-            current_layer.set_line_height(20.0 + 2.0);
-            current_layer.add_line_break();
-            // <document id>
-            current_layer.set_font(&monospace_font, 20.0);
-            current_layer.set_fill_color(colours::MAIN_DOCUMENT_TRIM);
-            current_layer.write_text(decrypted_shard.document_id(), &monospace_font);
-            current_layer.set_fill_color(colours::BLACK);
-            current_layer.set_line_height(10.0 + 2.0);
-            current_layer.add_line_break();
-            current_layer.add_line_break();
-
             // "Shard".
             current_layer.set_font(&text_font, 10.0);
             current_layer.set_fill_color(colours::GREY);
@@ -633,13 +617,32 @@ impl ToPdf for (&EncryptedKeyShard, &KeyShardCodewords) {
             current_layer.set_fill_color(colours::BLACK);
             current_layer.set_line_height(10.0 + 2.0);
             current_layer.add_line_break();
+            current_layer.add_line_break();
+
+            // "Document".
+            current_layer.set_font(&text_font, 10.0);
+            current_layer.set_fill_color(colours::GREY);
+            current_layer.write_text("Document", &text_font);
+            current_layer.set_fill_color(colours::BLACK);
+            current_layer.set_line_height(20.0 + 2.0);
+            current_layer.add_line_break();
+            // <document id>
+            current_layer.set_font(&monospace_font, 20.0);
+            current_layer.set_fill_color(colours::MAIN_DOCUMENT_TRIM);
+            current_layer.write_text(decrypted_shard.document_id(), &monospace_font);
+            current_layer.set_fill_color(colours::BLACK);
+            current_layer.set_line_height(10.0 + 2.0);
+            current_layer.add_line_break();
         }
         current_layer.end_text_section();
         current_layer.begin_text_section();
         {
             current_layer.set_word_spacing(1.2);
             current_layer.set_character_spacing(1.0);
-            current_layer.set_text_cursor(A5_MARGIN + Mm(45.0), A5_HEIGHT - current_y);
+            current_layer.set_text_cursor(
+                A5_MARGIN + Mm(45.0),
+                A5_HEIGHT - (current_y + Pt(5.0).into()),
+            );
 
             // Codewords.
             current_layer.set_font(&monospace_font, 10.0);
