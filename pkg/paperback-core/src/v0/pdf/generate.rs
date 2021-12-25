@@ -137,8 +137,7 @@ fn qr_with_fallback<D: AsRef<[u8]>>(
     let (qr_x, data_x) = (margin, margin + qr_size + margin);
 
     // Display svg.
-    let qr_svg = Svg::parse(&qr::generate_one_code(data)?.render::<svg::Color>().build())
-        .map_err(Error::ParseSvg)? // TODO: Use (#[from] SvgParseError)
+    let qr_svg = Svg::parse(&qr::generate_one_code(data)?.render::<svg::Color>().build())?
         .into_xobject(layer);
     let (scale_x, scale_y) = (
         qr_size / px_to_mm(qr_svg.width),
@@ -213,8 +212,7 @@ impl ToPdf for MainDocument {
             .iter()
             .map(|code| code.render::<svg::Color>().build())
             .map(|svg| Svg::parse(&svg))
-            .collect::<Result<Vec<_>, _>>()
-            .map_err(Error::ParseSvg)?; // TODO: Use (#[from] SvgParseError);
+            .collect::<Result<Vec<_>, _>>()?;
 
         // Construct an A4 PDF.
         let (doc, page1, layer1) = PdfDocument::new(
@@ -553,7 +551,7 @@ impl ToPdf for (&EncryptedKeyShard, &KeyShardCodewords) {
             (current_y + old_current_y) / 2.0
         };
         {
-            let scissors_svg = Svg::parse(SCISSORS_SVG).map_err(Error::ParseSvg)?; // TODO: Use (#[from] SvgParseError);
+            let scissors_svg = Svg::parse(SCISSORS_SVG)?;
             let scissors_svg_ref = scissors_svg.into_xobject(&current_layer);
 
             // For scissors, scale the height then retain the height:width ratio.

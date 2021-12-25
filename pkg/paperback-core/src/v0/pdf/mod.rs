@@ -44,9 +44,8 @@ pub enum Error {
     #[error("too many qr codes generated for {0} segment")]
     TooManyCodes(String),
 
-    #[error("svg parsing error: {0:?}")]
-    // Cannot use #[from] <https://github.com/fschutt/printpdf/issues/106>.
-    ParseSvg(printpdf::SvgParseError),
+    #[error("svg parsing error: {0}")]
+    ParseSvg(#[from] printpdf::SvgParseError),
 
     #[error("pdf generation error: {0}")]
     GeneratePdf(#[from] printpdf::Error),
