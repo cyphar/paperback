@@ -1,5 +1,14 @@
 ## paperback ##
 
+**NOTE**: While paperback is currently fully functional, all of the development
+of "paperpack v0" is experimental and the format of the various data portions
+of paperback are subject to change without warning. This means that a backup
+made today might not work with paperback tomorrow. However, once there is a
+proper release of paperback, the format of that version of paperback will be
+set in stone and any new changes will be done with a new version of paperback
+(paperback can detect the version of a document, so older documents will always
+be handled by paperback).
+
 `paperback` is a paper-based backup scheme that is secure and easy-to-use.
 Backups are encrypted, and the secret key is split into numerous "key shards"
 which can be stored separately (by different individuals), removing the need
