@@ -233,8 +233,7 @@ const DATA_OVERHEAD: usize = 1 /* multibase header */ +
                              2 * 9 /* 2*varuint length and index */;
 
 // TODO: Make this dynamic based on the error correction mode.
-//const MAX_DATA_LENGTH: usize = 926 - DATA_OVERHEAD;
-const MAX_DATA_LENGTH: usize = 626 - DATA_OVERHEAD;
+const MAX_DATA_LENGTH: usize = 926 - DATA_OVERHEAD;
 
 fn split_data<B: AsRef<[u8]>>(data_type: PartType, data: B) -> Vec<Part> {
     let data = data.as_ref();
