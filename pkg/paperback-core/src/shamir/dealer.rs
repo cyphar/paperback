@@ -17,7 +17,7 @@
  */
 
 use crate::shamir::{
-    gf::{GfElem, GfElemPrimitive, GfPolynomial},
+    gf::{self, EvaluablePolynomial, GfBarycentric, GfElem, GfElemPrimitive, GfPolynomial},
     shard::Shard,
     Error,
 };
@@ -29,7 +29,7 @@ use std::mem;
 /// [sss]: https://en.wikipedia.org/wiki/Shamir%27s_Secret_Sharing
 #[derive(Clone, Debug)]
 pub struct Dealer {
-    polys: Vec<GfPolynomial>,
+    polys: Vec<Box<dyn EvaluablePolynomial>>,
     secret_len: usize,
     threshold: GfElemPrimitive,
 }
@@ -56,7 +56,7 @@ impl Dealer {
             .map(|x0| {
                 let mut poly = GfPolynomial::new_rand(k, &mut rand::thread_rng());
                 *poly.constant_mut() = x0;
-                poly
+                Box::new(poly) as Box<dyn EvaluablePolynomial>
             })
             .collect::<Vec<_>>();
         Dealer {
@@ -70,7 +70,7 @@ impl Dealer {
     pub fn secret(&self) -> Vec<u8> {
         self.polys
             .iter()
-            .map(GfPolynomial::constant)
+            .map(|poly| poly.constant())
             .flat_map(|x| x.to_bytes())
             .take(self.secret_len)
             .collect::<Vec<_>>()
@@ -88,6 +88,14 @@ impl Dealer {
         while x == GfElem::ZERO {
             x = GfElem::new_rand(&mut rand::thread_rng());
         }
+        self.shard(x).expect("non x=0 shard should've been created")
+    }
+
+    /// Generate a `Shard` for the secret using the given `x` value.
+    fn shard(&self, x: GfElem) -> Option<Shard> {
+        if x == GfElem::ZERO {
+            return None;
+        }
         let ys = self
             .polys
             .iter()
@@ -97,12 +105,12 @@ impl Dealer {
                 y
             })
             .collect::<Vec<_>>();
-        Shard {
+        Some(Shard {
             x,
             ys,
             threshold: self.threshold,
             secret_len: self.secret_len,
-        }
+        })
     }
 
     /// Reconstruct an entire `Dealer` from a *unique* set of `Shard`s.
@@ -139,7 +147,8 @@ impl Dealer {
                 let ys = shards.iter().map(|s| s.ys[i]);
 
                 let points = xs.zip(ys).collect::<Vec<_>>();
-                GfPolynomial::lagrange(threshold - 1, points.as_slice())
+                GfBarycentric::recover(threshold - 1, points.as_slice())
+                    .map(|poly| Box::new(poly) as Box<dyn EvaluablePolynomial>)
             })
             .collect::<Result<Vec<_>, _>>()?;
 
@@ -184,7 +193,7 @@ pub fn recover_secret<S: AsRef<[Shard]>>(shards: S) -> Result<Vec<u8>, Error> {
             let ys = shards.iter().map(|s| s.ys[i]);
 
             let points = xs.zip(ys).collect::<Vec<_>>();
-            GfPolynomial::lagrange_constant(threshold - 1, points.as_slice())
+            gf::lagrange_constant(threshold - 1, points.as_slice())
         })
         .collect::<Result<Vec<_>, _>>()? // XXX: I don't like this but flat_map() causes issues.
         .into_iter()
@@ -260,7 +269,7 @@ mod test {
     }
 
     #[quickcheck]
-    fn limited_recover_success(n: u8, secret: Vec<u8>) -> TestResult {
+    fn limited_recover_success(n: u8, secret: Vec<u8>, test_xs: Vec<GfElem>) -> TestResult {
         // Invalid data. Note that even moderately large n values take a longer
         // time to fully recover -- which when paired with quickcheck makes it
         // take far too long. This is proportional to secret.len() (probably
@@ -279,6 +288,10 @@ mod test {
             .collect::<Vec<_>>();
         let recovered_dealer = Dealer::recover(shards).unwrap();
 
-        TestResult::from_bool(dealer.polys == recovered_dealer.polys)
+        TestResult::from_bool(
+            test_xs
+                .iter()
+                .all(|&x| dealer.shard(x) == recovered_dealer.shard(x)),
+        )
     }
 }

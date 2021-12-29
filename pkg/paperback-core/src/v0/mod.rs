@@ -555,7 +555,9 @@ mod test {
         };
     }
 
-    // TODO: Switch to quickcheck -- currently this takes too long.
+    // TODO: Switch to quickcheck -- unfortunately testing up to 64-person
+    // quorums takes too long if you use quick-check, but we can generate
+    // separate tests for each quorum size we want to test.
     paperback_expand_test!(paperback_expand_smoke_2, 2);
     paperback_expand_test!(paperback_expand_smoke_3, 3);
     paperback_expand_test!(paperback_expand_smoke_4, 4);
@@ -568,6 +570,58 @@ mod test {
     paperback_expand_test!(paperback_expand_smoke_11, 11);
     paperback_expand_test!(paperback_expand_smoke_12, 12);
     paperback_expand_test!(paperback_expand_smoke_13, 13);
+    paperback_expand_test!(paperback_expand_smoke_14, 14);
+    paperback_expand_test!(paperback_expand_smoke_15, 15);
+    paperback_expand_test!(paperback_expand_smoke_16, 16);
+    paperback_expand_test!(paperback_expand_smoke_17, 17);
+    paperback_expand_test!(paperback_expand_smoke_18, 18);
+    paperback_expand_test!(paperback_expand_smoke_19, 19);
+    paperback_expand_test!(paperback_expand_smoke_20, 20);
+    paperback_expand_test!(paperback_expand_smoke_21, 21);
+    paperback_expand_test!(paperback_expand_smoke_22, 22);
+    paperback_expand_test!(paperback_expand_smoke_23, 23);
+    paperback_expand_test!(paperback_expand_smoke_24, 24);
+    paperback_expand_test!(paperback_expand_smoke_25, 25);
+    paperback_expand_test!(paperback_expand_smoke_26, 26);
+    paperback_expand_test!(paperback_expand_smoke_27, 27);
+    paperback_expand_test!(paperback_expand_smoke_28, 28);
+    paperback_expand_test!(paperback_expand_smoke_29, 29);
+    paperback_expand_test!(paperback_expand_smoke_30, 30);
+    paperback_expand_test!(paperback_expand_smoke_31, 31);
+    paperback_expand_test!(paperback_expand_smoke_32, 32);
+    paperback_expand_test!(paperback_expand_smoke_33, 33);
+    paperback_expand_test!(paperback_expand_smoke_34, 34);
+    paperback_expand_test!(paperback_expand_smoke_35, 35);
+    paperback_expand_test!(paperback_expand_smoke_36, 36);
+    paperback_expand_test!(paperback_expand_smoke_37, 37);
+    paperback_expand_test!(paperback_expand_smoke_38, 38);
+    paperback_expand_test!(paperback_expand_smoke_39, 39);
+    paperback_expand_test!(paperback_expand_smoke_40, 40);
+    paperback_expand_test!(paperback_expand_smoke_41, 41);
+    paperback_expand_test!(paperback_expand_smoke_42, 42);
+    paperback_expand_test!(paperback_expand_smoke_43, 43);
+    paperback_expand_test!(paperback_expand_smoke_44, 44);
+    paperback_expand_test!(paperback_expand_smoke_45, 45);
+    paperback_expand_test!(paperback_expand_smoke_46, 46);
+    paperback_expand_test!(paperback_expand_smoke_47, 47);
+    paperback_expand_test!(paperback_expand_smoke_48, 48);
+    paperback_expand_test!(paperback_expand_smoke_49, 49);
+    paperback_expand_test!(paperback_expand_smoke_50, 50);
+    paperback_expand_test!(paperback_expand_smoke_51, 51);
+    paperback_expand_test!(paperback_expand_smoke_52, 52);
+    paperback_expand_test!(paperback_expand_smoke_53, 53);
+    paperback_expand_test!(paperback_expand_smoke_54, 54);
+    paperback_expand_test!(paperback_expand_smoke_55, 55);
+    paperback_expand_test!(paperback_expand_smoke_56, 56);
+    paperback_expand_test!(paperback_expand_smoke_57, 57);
+    paperback_expand_test!(paperback_expand_smoke_58, 58);
+    paperback_expand_test!(paperback_expand_smoke_59, 59);
+    paperback_expand_test!(paperback_expand_smoke_60, 60);
+    paperback_expand_test!(paperback_expand_smoke_61, 61);
+    paperback_expand_test!(paperback_expand_smoke_62, 62);
+    paperback_expand_test!(paperback_expand_smoke_63, 63);
+    paperback_expand_test!(paperback_expand_smoke_64, 64);
+    paperback_expand_test!(paperback_expand_smoke_128, 128);
 
     #[quickcheck]
     fn key_shard_encryption_roundtrip(shard: KeyShard) {
