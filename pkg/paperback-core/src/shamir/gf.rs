@@ -464,21 +464,21 @@ impl GfPolynomial {
         // the set {x} (without replacement). The proof is left to the reader,
         // but this is just a special-case of multi-binomial expansion.
         let polys = (0..k).map(|j| {
-            let idxs = (0..k).filter(|m| *m != j).collect::<Vec<_>>();
+            let idxs = (0..k).filter(|&m| m != j).collect::<Vec<_>>();
 
             // \frac{y_j}{\prod_{m=0,m!=j}^{k} x_j-x_m}
             let scale = ys[j]
                 / idxs
                     .iter()
-                    .fold(GfElem::ONE, |acc, m| acc * (xs[j] - xs[*m]));
+                    .fold(GfElem::ONE, |acc, &m| acc * (xs[j] - xs[m]));
 
             // \sum_{i=0}^{k} SUM_COMB({-a}, i) x^i
             let coeffs = (0..k)
                 .map(|i| {
                     idxs.iter()
-                        .map(|i| -xs[*i])
+                        .map(|&i| -xs[i])
                         .combinations(i)
-                        .map(|xs| xs.iter().fold(GfElem::ONE, |acc, x| acc * *x))
+                        .map(|xs| xs.iter().fold(GfElem::ONE, |acc, &x| acc * x))
                         .reduce(Add::add)
                         .unwrap_or(GfElem::ZERO)
                 })
@@ -502,11 +502,13 @@ impl EvaluablePolynomial for GfPolynomial {
         // Implementation of Horner's method for evaluating a polynomial, which
         // results in only O(n) operations (n additions, and n multiplications)
         // rather than the far less optimal. Since we order the polynomial
-        // terms in terms of decreasing degree, we need to do it in reverse.
+        // terms in terms of increasing degree, we need to do it in reverse.
         self.0
             .iter()
             .rev()
-            .fold(GfElem::ZERO, |acc, coeff| *coeff + x * acc)
+            .copied()
+            .reduce(|acc, coeff| coeff + x * acc)
+            .expect("polynomial has at least one term")
     }
 
     fn degree(&self) -> GfElemPrimitive {
@@ -601,14 +603,14 @@ impl EvaluablePolynomial for GfBarycentric {
             .xs
             .iter()
             .zip(&self.ws)
-            .map(|(xj, wj)| *wj / (x - *xj))
+            .map(|(&xj, &wj)| wj / (x - xj))
             .collect::<Vec<_>>();
 
         // Sum(sum_terms . ys)
         let numerator = sum_terms
             .iter()
             .zip(&self.ys)
-            .map(|(t, yj)| *t * *yj)
+            .map(|(&t, &yj)| t * yj)
             .reduce(GfElem::add)
             .expect("barycentric form has at least one term");
 
@@ -672,11 +674,11 @@ impl GfBarycentric {
         let ws = xs
             .iter()
             .enumerate()
-            .map(|(j, xj)| {
+            .map(|(j, &xj)| {
                 xs.iter()
                     .enumerate()
-                    .filter(|(i, _)| *i != j)
-                    .map(|(_, xi)| *xj - *xi)
+                    .filter(|&(i, _)| i != j)
+                    .map(|(_, &xi)| xj - xi)
                     .reduce(Mul::mul)
                     .expect("must be at least one x value")
                     .inverse()
@@ -754,7 +756,7 @@ pub fn lagrange_constant<P: AsRef<[GfPoint]>>(
         acc + ys[j]
             // ...{linv_j(0)}
             / (0..k as usize)
-                .filter(|m| *m != j)
+                .filter(|&m| m != j)
                 .fold(GfElem::ONE, |acc, m| {
                     // (1-frac{x_j}{x_m}) == (1-x_j*xinv_m)
                     acc * (GfElem::ONE - xs[j] * xs_inv[m])
@@ -877,8 +879,8 @@ mod test {
             .iter()
             .enumerate()
             .map(|current| {
-                let (n, coeff) = current;
-                *coeff * x.pow(n)
+                let (n, &coeff) = current;
+                coeff * x.pow(n)
             })
             .reduce(Add::add)
             .expect("must be at least one coefficient")
@@ -906,7 +908,7 @@ mod test {
         let xs = (0..n + 1)
             .map(|_| GfElem::new_rand(&mut OsRng))
             .collect::<Vec<_>>();
-        let ys = xs.iter().map(|x| poly.evaluate(*x));
+        let ys = xs.iter().map(|&x| poly.evaluate(x));
         let points = xs.iter().copied().zip(ys).collect::<Vec<_>>();
         let constant = lagrange_constant(n, points.as_slice())
             .expect("should not get errors from lagrange_constant");
@@ -924,7 +926,7 @@ mod test {
         let xs = (0..n + 1)
             .map(|_| GfElem::new_rand(&mut OsRng))
             .collect::<Vec<_>>();
-        let ys = xs.iter().map(|x| poly.evaluate(*x));
+        let ys = xs.iter().map(|&x| poly.evaluate(x));
         let points = xs.iter().copied().zip(ys).collect::<Vec<_>>();
         let interpolated_poly =
             GfPolynomial::recover(n, points).expect("should not get errors from lagrange");
@@ -938,7 +940,7 @@ mod test {
         let xs = (0..n + 1)
             .map(|_| GfElem::new_rand(&mut OsRng))
             .collect::<Vec<_>>();
-        let ys = xs.iter().map(|x| poly.evaluate(*x));
+        let ys = xs.iter().map(|&x| poly.evaluate(x));
         let points = xs.iter().copied().zip(ys).collect::<Vec<_>>();
         let interpolated_poly = GfBarycentric::recover(n, points)
             .expect("should not get errors from barycentric recovery");
