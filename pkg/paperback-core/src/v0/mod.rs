@@ -544,8 +544,22 @@ mod test {
         recovered_secret == secret.as_ref()
     }
 
+    #[cfg(not(debug_assertions))] // is --release?
+    #[quickcheck]
+    fn paperback_expand_smoke(quorum_size: u8, secret: Vec<u8>) -> TestResult {
+        if quorum_size < 1 || quorum_size > 150 {
+            return TestResult::discard();
+        }
+        TestResult::from_bool(inner_paperback_expand_smoke(quorum_size.into(), secret))
+    }
+
+    // For non-release test runs, we have to manally test the sizes we want
+    // because expansion of a (for instance) 256-threshold scheme can take up to
+    // 80s which quickcheck may attempt hundreds of times. However we can use
+    // quickcheck for release test runs.
     macro_rules! paperback_expand_test {
         ($func:ident, $quorum_size:expr) => {
+            #[cfg(debug_assertions)] // is not --release?
             #[test]
             fn $func() {
                 let mut secret = [0; 1024];
@@ -555,73 +569,71 @@ mod test {
         };
     }
 
-    // TODO: Switch to quickcheck -- unfortunately testing up to 64-person
-    // quorums takes too long if you use quick-check, but we can generate
-    // separate tests for each quorum size we want to test.
-    paperback_expand_test!(paperback_expand_smoke_2, 2);
-    paperback_expand_test!(paperback_expand_smoke_3, 3);
-    paperback_expand_test!(paperback_expand_smoke_4, 4);
-    paperback_expand_test!(paperback_expand_smoke_5, 5);
-    paperback_expand_test!(paperback_expand_smoke_6, 6);
-    paperback_expand_test!(paperback_expand_smoke_7, 7);
-    paperback_expand_test!(paperback_expand_smoke_8, 8);
-    paperback_expand_test!(paperback_expand_smoke_9, 9);
-    paperback_expand_test!(paperback_expand_smoke_10, 10);
-    paperback_expand_test!(paperback_expand_smoke_11, 11);
-    paperback_expand_test!(paperback_expand_smoke_12, 12);
-    paperback_expand_test!(paperback_expand_smoke_13, 13);
-    paperback_expand_test!(paperback_expand_smoke_14, 14);
-    paperback_expand_test!(paperback_expand_smoke_15, 15);
-    paperback_expand_test!(paperback_expand_smoke_16, 16);
-    paperback_expand_test!(paperback_expand_smoke_17, 17);
-    paperback_expand_test!(paperback_expand_smoke_18, 18);
-    paperback_expand_test!(paperback_expand_smoke_19, 19);
-    paperback_expand_test!(paperback_expand_smoke_20, 20);
-    paperback_expand_test!(paperback_expand_smoke_21, 21);
-    paperback_expand_test!(paperback_expand_smoke_22, 22);
-    paperback_expand_test!(paperback_expand_smoke_23, 23);
-    paperback_expand_test!(paperback_expand_smoke_24, 24);
-    paperback_expand_test!(paperback_expand_smoke_25, 25);
-    paperback_expand_test!(paperback_expand_smoke_26, 26);
-    paperback_expand_test!(paperback_expand_smoke_27, 27);
-    paperback_expand_test!(paperback_expand_smoke_28, 28);
-    paperback_expand_test!(paperback_expand_smoke_29, 29);
-    paperback_expand_test!(paperback_expand_smoke_30, 30);
-    paperback_expand_test!(paperback_expand_smoke_31, 31);
-    paperback_expand_test!(paperback_expand_smoke_32, 32);
-    paperback_expand_test!(paperback_expand_smoke_33, 33);
-    paperback_expand_test!(paperback_expand_smoke_34, 34);
-    paperback_expand_test!(paperback_expand_smoke_35, 35);
-    paperback_expand_test!(paperback_expand_smoke_36, 36);
-    paperback_expand_test!(paperback_expand_smoke_37, 37);
-    paperback_expand_test!(paperback_expand_smoke_38, 38);
-    paperback_expand_test!(paperback_expand_smoke_39, 39);
-    paperback_expand_test!(paperback_expand_smoke_40, 40);
-    paperback_expand_test!(paperback_expand_smoke_41, 41);
-    paperback_expand_test!(paperback_expand_smoke_42, 42);
-    paperback_expand_test!(paperback_expand_smoke_43, 43);
-    paperback_expand_test!(paperback_expand_smoke_44, 44);
-    paperback_expand_test!(paperback_expand_smoke_45, 45);
-    paperback_expand_test!(paperback_expand_smoke_46, 46);
-    paperback_expand_test!(paperback_expand_smoke_47, 47);
-    paperback_expand_test!(paperback_expand_smoke_48, 48);
-    paperback_expand_test!(paperback_expand_smoke_49, 49);
-    paperback_expand_test!(paperback_expand_smoke_50, 50);
-    paperback_expand_test!(paperback_expand_smoke_51, 51);
-    paperback_expand_test!(paperback_expand_smoke_52, 52);
-    paperback_expand_test!(paperback_expand_smoke_53, 53);
-    paperback_expand_test!(paperback_expand_smoke_54, 54);
-    paperback_expand_test!(paperback_expand_smoke_55, 55);
-    paperback_expand_test!(paperback_expand_smoke_56, 56);
-    paperback_expand_test!(paperback_expand_smoke_57, 57);
-    paperback_expand_test!(paperback_expand_smoke_58, 58);
-    paperback_expand_test!(paperback_expand_smoke_59, 59);
-    paperback_expand_test!(paperback_expand_smoke_60, 60);
-    paperback_expand_test!(paperback_expand_smoke_61, 61);
-    paperback_expand_test!(paperback_expand_smoke_62, 62);
-    paperback_expand_test!(paperback_expand_smoke_63, 63);
-    paperback_expand_test!(paperback_expand_smoke_64, 64);
+    paperback_expand_test!(paperback_expand_smoke_002, 2);
+    paperback_expand_test!(paperback_expand_smoke_003, 3);
+    paperback_expand_test!(paperback_expand_smoke_004, 4);
+    paperback_expand_test!(paperback_expand_smoke_005, 5);
+    paperback_expand_test!(paperback_expand_smoke_006, 6);
+    paperback_expand_test!(paperback_expand_smoke_007, 7);
+    paperback_expand_test!(paperback_expand_smoke_008, 8);
+    paperback_expand_test!(paperback_expand_smoke_009, 9);
+    paperback_expand_test!(paperback_expand_smoke_010, 10);
+    paperback_expand_test!(paperback_expand_smoke_011, 11);
+    paperback_expand_test!(paperback_expand_smoke_012, 12);
+    paperback_expand_test!(paperback_expand_smoke_013, 13);
+    paperback_expand_test!(paperback_expand_smoke_014, 14);
+    paperback_expand_test!(paperback_expand_smoke_015, 15);
+    paperback_expand_test!(paperback_expand_smoke_016, 16);
+    paperback_expand_test!(paperback_expand_smoke_017, 17);
+    paperback_expand_test!(paperback_expand_smoke_018, 18);
+    paperback_expand_test!(paperback_expand_smoke_019, 19);
+    paperback_expand_test!(paperback_expand_smoke_020, 20);
+    paperback_expand_test!(paperback_expand_smoke_021, 21);
+    paperback_expand_test!(paperback_expand_smoke_022, 22);
+    paperback_expand_test!(paperback_expand_smoke_023, 23);
+    paperback_expand_test!(paperback_expand_smoke_024, 24);
+    paperback_expand_test!(paperback_expand_smoke_025, 25);
+    paperback_expand_test!(paperback_expand_smoke_026, 26);
+    paperback_expand_test!(paperback_expand_smoke_027, 27);
+    paperback_expand_test!(paperback_expand_smoke_028, 28);
+    paperback_expand_test!(paperback_expand_smoke_029, 29);
+    paperback_expand_test!(paperback_expand_smoke_030, 30);
+    paperback_expand_test!(paperback_expand_smoke_031, 31);
+    paperback_expand_test!(paperback_expand_smoke_032, 32);
+    paperback_expand_test!(paperback_expand_smoke_033, 33);
+    paperback_expand_test!(paperback_expand_smoke_034, 34);
+    paperback_expand_test!(paperback_expand_smoke_035, 35);
+    paperback_expand_test!(paperback_expand_smoke_036, 36);
+    paperback_expand_test!(paperback_expand_smoke_037, 37);
+    paperback_expand_test!(paperback_expand_smoke_038, 38);
+    paperback_expand_test!(paperback_expand_smoke_039, 39);
+    paperback_expand_test!(paperback_expand_smoke_040, 40);
+    paperback_expand_test!(paperback_expand_smoke_041, 41);
+    paperback_expand_test!(paperback_expand_smoke_042, 42);
+    paperback_expand_test!(paperback_expand_smoke_043, 43);
+    paperback_expand_test!(paperback_expand_smoke_044, 44);
+    paperback_expand_test!(paperback_expand_smoke_045, 45);
+    paperback_expand_test!(paperback_expand_smoke_046, 46);
+    paperback_expand_test!(paperback_expand_smoke_047, 47);
+    paperback_expand_test!(paperback_expand_smoke_048, 48);
+    paperback_expand_test!(paperback_expand_smoke_049, 49);
+    paperback_expand_test!(paperback_expand_smoke_050, 50);
+    paperback_expand_test!(paperback_expand_smoke_051, 51);
+    paperback_expand_test!(paperback_expand_smoke_052, 52);
+    paperback_expand_test!(paperback_expand_smoke_053, 53);
+    paperback_expand_test!(paperback_expand_smoke_054, 54);
+    paperback_expand_test!(paperback_expand_smoke_055, 55);
+    paperback_expand_test!(paperback_expand_smoke_056, 56);
+    paperback_expand_test!(paperback_expand_smoke_057, 57);
+    paperback_expand_test!(paperback_expand_smoke_058, 58);
+    paperback_expand_test!(paperback_expand_smoke_059, 59);
+    paperback_expand_test!(paperback_expand_smoke_060, 60);
+    paperback_expand_test!(paperback_expand_smoke_061, 61);
+    paperback_expand_test!(paperback_expand_smoke_062, 62);
+    paperback_expand_test!(paperback_expand_smoke_063, 63);
+    paperback_expand_test!(paperback_expand_smoke_064, 64);
     paperback_expand_test!(paperback_expand_smoke_128, 128);
+    paperback_expand_test!(paperback_expand_smoke_201, 201);
 
     #[quickcheck]
     fn key_shard_encryption_roundtrip(shard: KeyShard) {

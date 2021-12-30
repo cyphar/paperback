@@ -52,9 +52,15 @@ jobs:
           toolchain: stable
           override: true
       - uses: actions-rs/cargo@v1
+        name: cargo test
         with:
           command: test
           args: --workspace
+      - uses: actions-rs/cargo@v1
+        name: cargo test --release
+        with:
+          command: test
+          args: --release --workspace
 
   fmt:
     name: rustfmt

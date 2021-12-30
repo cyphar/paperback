@@ -195,7 +195,7 @@ pub fn recover_secret<S: AsRef<[Shard]>>(shards: S) -> Result<Vec<u8>, Error> {
             let points = xs.zip(ys).collect::<Vec<_>>();
             gf::lagrange_constant(threshold - 1, points.as_slice())
         })
-        .collect::<Result<Vec<_>, _>>()? // XXX: I don't like this but flat_map() causes issues.
+        .collect::<Result<Vec<_>, _>>()? // XXX: I don't like double-collecting here but flat_map() causes issues.
         .into_iter()
         .flat_map(|x| x.to_bytes())
         .take(secret_len)
@@ -208,11 +208,9 @@ mod test {
 
     use quickcheck::TestResult;
 
-    // NOTE: We use u16s and u8s here (and limit the range) because generating
-    //       ridiculously large dealers takes too long because of the amount of
-    //       CSPRNG churn it causes. In principle we could have a special
-    //       Dealer::new_inner() that takes a CoreRng but that's probably not
-    //       necessary.
+    // We use u16s and u8s here (and limit the range) because we cannot handle
+    // ridiculously large quorum sizes in quickcheck tests. Some larger quorums
+    // are tested in v0::test::paperback_expand_smoke.
 
     #[quickcheck]
     fn basic_roundtrip(n: u16, secret: Vec<u8>) -> TestResult {
@@ -223,12 +221,19 @@ mod test {
         TestResult::from_bool(secret == dealer.secret())
     }
 
+    #[cfg(debug_assertions)] // not --release
+    const SECRET_UPPER: u8 = 64;
+    #[cfg(not(debug_assertions))] // --release
+    const SECRET_UPPER: u8 = 255;
+
     #[quickcheck]
     fn recover_secret_fail(n: u8, secret: Vec<u8>) -> TestResult {
-        // Invalid data. Note that large n values take a very long time to
-        // recover the secret. This is proportional to secret.len(), which is
-        // controlled by quickcheck and thus can be quite large.
-        if n < 2 || n > 64 || secret.len() < 1 {
+        // Fail to recover the secret with invalid shards.
+        //
+        // Note that large n values take a very long time to recover the secret.
+        // This is proportional to secret.len(), which is controlled by
+        // quickcheck and thus can be quite large.
+        if n < 2 || n > SECRET_UPPER || secret.len() < 1 {
             return TestResult::discard();
         }
 
@@ -248,10 +253,12 @@ mod test {
 
     #[quickcheck]
     fn recover_secret_success(n: u8, secret: Vec<u8>) -> TestResult {
-        // Invalid data. Note that large n values take a very long time to
-        // recover the secret. This is proportional to secret.len(), which is
-        // controlled by quickcheck and thus can be quite large.
-        if n < 1 || n > 64 {
+        // Recover just the secret.
+        //
+        // Note that large n values take a very long time to recover the secret.
+        // This is proportional to secret.len(), which is controlled by
+        // quickcheck and thus can be quite large.
+        if n < 1 || n > SECRET_UPPER {
             return TestResult::discard();
         }
 
@@ -268,13 +275,70 @@ mod test {
         TestResult::from_bool(recover_secret(shards).unwrap() == secret)
     }
 
+    #[cfg(debug_assertions)] // not --release
+    const RECOVER_UPPER: u8 = 32;
+    #[cfg(not(debug_assertions))] // --release
+    const RECOVER_UPPER: u8 = 255;
+
+    #[quickcheck]
+    fn limited_recover_fail(n: u8, secret: Vec<u8>, test_xs: Vec<GfElem>) -> TestResult {
+        use std::collections::HashSet;
+
+        // Fail to recover the dealer with invalid shards.
+        //
+        // Note that even moderately large n values take a longer time to fully
+        // recover -- which when paired with quickcheck makes it take far too
+        // long. This is proportional to secret.len() (probably O(L*n^2) with
+        // big constants or something like that).
+        if n < 2 || n > RECOVER_UPPER || secret.len() < 1 || test_xs.contains(&GfElem::ZERO) {
+            return TestResult::discard();
+        }
+        let dealer = Dealer::new(n.into(), secret);
+        let shards = (0..(n - 1))
+            .map(|_| {
+                let mut shard = dealer.next_shard();
+                shard.threshold -= 1;
+                // Ensure shard IDs are always ID_LENGTH.
+                assert_eq!(shard.id().len(), Shard::ID_LENGTH);
+                shard
+            })
+            .collect::<Vec<_>>();
+        let shard_xs = {
+            let mut xs = HashSet::new();
+            for shard in &shards {
+                xs.insert(shard.x);
+            }
+            xs
+        };
+        let recovered_dealer = Dealer::recover(shards).unwrap();
+
+        println!(
+            "GF(0) => dealer: {:?}, recovered_dealer: {:?}",
+            dealer.shard(GfElem::ZERO),
+            recovered_dealer.shard(GfElem::ZERO)
+        );
+
+        TestResult::from_bool(
+            dealer.secret() != recovered_dealer.secret()
+                && test_xs
+                    .iter()
+                    // If it is a shard x value then it will match, otherwise it
+                    // should not match (because it's the wrong polynomial).
+                    .all(|&x| {
+                        shard_xs.contains(&x) == (dealer.shard(x) == recovered_dealer.shard(x))
+                    }),
+        )
+    }
+
     #[quickcheck]
     fn limited_recover_success(n: u8, secret: Vec<u8>, test_xs: Vec<GfElem>) -> TestResult {
-        // Invalid data. Note that even moderately large n values take a longer
-        // time to fully recover -- which when paired with quickcheck makes it
-        // take far too long. This is proportional to secret.len() (probably
-        // O(n^2) with big constants or something like that).
-        if n < 2 || n > 12 {
+        // Recover the dealer so we can construct new shards.
+        //
+        // Note that even moderately large n values take a longer time to fully
+        // recover -- which when paired with quickcheck makes it take far too
+        // long. This is proportional to secret.len() (probably O(L*n^2) with
+        // big constants or something like that).
+        if n < 1 || n > RECOVER_UPPER || test_xs.contains(&GfElem::ZERO) {
             return TestResult::discard();
         }
         let dealer = Dealer::new(n.into(), secret);
@@ -289,9 +353,10 @@ mod test {
         let recovered_dealer = Dealer::recover(shards).unwrap();
 
         TestResult::from_bool(
-            test_xs
-                .iter()
-                .all(|&x| dealer.shard(x) == recovered_dealer.shard(x)),
+            dealer.secret() == recovered_dealer.secret()
+                && test_xs
+                    .iter()
+                    .all(|&x| dealer.shard(x) == recovered_dealer.shard(x)),
         )
     }
 }

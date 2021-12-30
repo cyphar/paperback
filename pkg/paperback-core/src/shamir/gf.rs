@@ -46,7 +46,7 @@ pub type GfElemPrimitive = u32;
 /// implementations of `GF(2^n)` fields (and `GF(2^8)` is not suitable for our
 /// purposes).
 // NOTE: PartialEq is not timing-safe.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
 pub struct GfElem(GfElemPrimitive);
 
 /// (x, y) in GF.
@@ -680,9 +680,20 @@ impl GfBarycentric {
                     .filter(|&(i, _)| i != j)
                     .map(|(_, &xi)| xj - xi)
                     .reduce(Mul::mul)
-                    .expect("must be at least one x value")
-                    .inverse()
-                    .expect("barycentric weights cannot be zero")
+                    .map_or_else(
+                        || {
+                            // In this situation, any w_0 value is acceptable
+                            // because it will be cancelled out in L(x) since
+                            //   L(x) = y = secret     V x E ...
+                            assert!(
+                                n == 0,
+                                "zero-length weights should only happen with degree-0 polynomial"
+                            );
+                            Some(GfElem::ONE)
+                        },
+                        GfElem::inverse,
+                    )
+                    .expect("barycentric weights should not be zero")
             })
             .collect::<Vec<_>>();
 
