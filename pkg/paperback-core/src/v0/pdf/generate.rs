@@ -554,11 +554,9 @@ impl ToPdf for (&EncryptedKeyShard, &KeyShardCodewords) {
             let scissors_svg = Svg::parse(SCISSORS_SVG)?;
             let scissors_svg_ref = scissors_svg.into_xobject(&current_layer);
 
-            // For scissors, scale the height then retain the height:width ratio.
+            // For scissors, scale to the target height.
             let target_height = Mm(5.0);
-            let scale_y = target_height / px_to_mm(scissors_svg_ref.height);
-            let scale_x =
-                scale_y * (scissors_svg_ref.width.0 as f64 / scissors_svg_ref.height.0 as f64);
+            let scale = target_height / px_to_mm(scissors_svg_ref.height);
 
             // Dashed line.
             let points = vec![
@@ -587,8 +585,8 @@ impl ToPdf for (&EncryptedKeyShard, &KeyShardCodewords) {
                 SvgTransform {
                     translate_x: Some(A5_MARGIN),
                     translate_y: Some(A5_HEIGHT - (cut_here_y + target_height / 2.0)),
-                    scale_x: Some(scale_x),
-                    scale_y: Some(scale_y),
+                    scale_x: Some(scale),
+                    scale_y: Some(scale),
                     ..Default::default()
                 },
             );
