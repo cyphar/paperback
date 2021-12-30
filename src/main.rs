@@ -56,13 +56,14 @@ fn backup(matches: &ArgMatches<'_>) -> Result<(), Error> {
         .value_of("INPUT")
         .expect("required INPUT argument not given");
 
-    let input: Box<dyn Read + 'static> = if input_path == "-" {
-        Box::new(io::stdin())
+    let (mut stdin_reader, mut file_reader);
+    let input: &mut dyn Read = if input_path == "-" {
+        stdin_reader = io::stdin();
+        &mut stdin_reader
     } else {
-        Box::new(
-            File::open(&input_path)
-                .with_context(|| format!("failed to open secret data file '{}'", input_path))?,
-        )
+        file_reader = File::open(&input_path)
+            .with_context(|| format!("failed to open secret data file '{}'", input_path))?;
+        &mut file_reader
     };
     let mut buffer_input = BufReader::new(input);
 
@@ -193,14 +194,15 @@ fn recover(matches: &ArgMatches<'_>) -> Result<(), Error> {
         .recover_document()
         .context("recovering secret data")?;
 
-    let mut output_file: Box<dyn Write + 'static> =
-        if output_path == "-" {
-            Box::new(io::stdout())
-        } else {
-            Box::new(File::create(output_path).with_context(|| {
-                format!("failed to open output file '{}' for writing", output_path)
-            })?)
-        };
+    let (mut stdout_writer, mut file_writer);
+    let output_file: &mut dyn Write = if output_path == "-" {
+        stdout_writer = io::stdout();
+        &mut stdout_writer
+    } else {
+        file_writer = File::create(output_path)
+            .with_context(|| format!("failed to open output file '{}' for writing", output_path))?;
+        &mut file_writer
+    };
 
     output_file
         .write_all(&secret)
