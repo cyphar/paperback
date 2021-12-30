@@ -50,4 +50,4 @@ multibase = "^0.9"
 # See <https://github.com/paritytech/unsigned-varint/pull/54>.
 unsigned-varint = { git = "https://github.com/cyphar/unsigned-varint", branch = "nom6-errors" }
 # See <https://github.com/fschutt/printpdf/pull/112>.
-printpdf = { git = "https://github.com/cyphar/printpdf", branch = "svg-bbox" }
+printpdf = { git = "https://github.com/fschutt/printpdf", branch = "master" }
