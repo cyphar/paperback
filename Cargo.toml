@@ -42,7 +42,7 @@ members = [
 [dependencies]
 "paperback-core" = { path = "pkg/paperback-core" }
 
-clap = "^2"
+clap = "^3"
 anyhow = "^1"
 multibase = "^0.9"
 

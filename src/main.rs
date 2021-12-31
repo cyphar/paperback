@@ -26,7 +26,7 @@ use std::{
 };
 
 use anyhow::{anyhow, ensure, Context, Error};
-use clap::{App, Arg, ArgMatches, SubCommand};
+use clap::{App, Arg, ArgMatches};
 
 extern crate paperback_core;
 use paperback_core::latest as paperback;
@@ -36,7 +36,7 @@ use paperback::{
     UntrustedQuorum,
 };
 
-fn backup(matches: &ArgMatches<'_>) -> Result<(), Error> {
+fn backup(matches: &ArgMatches) -> Result<(), Error> {
     let sealed: bool = matches
         .value_of("sealed")
         .expect("invalid --sealed argument")
@@ -142,7 +142,7 @@ fn read_multibase_qr<S: AsRef<str>, T: FromWire>(prompt: S) -> Result<T, Error> 
         .map_err(|err| anyhow!("parse inner qr code data: {}", err))
 }
 
-fn recover(matches: &ArgMatches<'_>) -> Result<(), Error> {
+fn recover(matches: &ArgMatches) -> Result<(), Error> {
     let interactive: bool = matches
         .value_of("interactive")
         .expect("invalid --interactive argument")
@@ -211,7 +211,7 @@ fn recover(matches: &ArgMatches<'_>) -> Result<(), Error> {
     Ok(())
 }
 
-fn expand(matches: &ArgMatches<'_>) -> Result<(), Error> {
+fn expand(matches: &ArgMatches) -> Result<(), Error> {
     let interactive: bool = matches
         .value_of("interactive")
         .expect("invalid --interactive argument")
@@ -282,71 +282,78 @@ fn expand(matches: &ArgMatches<'_>) -> Result<(), Error> {
 }
 
 fn main() -> Result<(), Box<dyn StdError>> {
-    let matches = App::new("paperback-cli")
+    let mut app = App::new("paperback-cli")
         .version("0.0.0")
         .author("Aleksa Sarai <cyphar@cyphar.com>")
         .about("Operate on a paperback backup using a basic CLI interface.")
         // paperback-cli backup [--sealed] -n <QUORUM SIZE> -k <SHARDS> INPUT
-        .subcommand(SubCommand::with_name("backup")
-            .arg(Arg::with_name("sealed")
+        .subcommand(App::new("backup")
+            .arg(Arg::new("sealed")
                 .long("sealed")
                 .help("Create a sealed backup, which cannot be expanded (have new shards be created) after creation.")
                 .possible_values(&["true", "false"])
                 .default_value("false"))
-            .arg(Arg::with_name("quorum_size")
-                .short("n")
+            .arg(Arg::new("quorum_size")
+                .short('n')
                 .long("quorum-size")
                 .value_name("QUORUM SIZE")
                 .help("Number of shards required to recover the document (must not be larger than --shards).")
                 .takes_value(true)
                 .required(true))
-            .arg(Arg::with_name("shards")
-                .short("k")
+            .arg(Arg::new("shards")
+                .short('k')
                 .long("shards")
                 .value_name("NUM SHARDS")
                 .help("Number of shards to create (must not be smaller than --quorum-size).")
                 .takes_value(true)
                 .required(true))
-            .arg(Arg::with_name("INPUT")
+            .arg(Arg::new("INPUT")
                 .help(r#"Path to file containing secret data to backup ("-" to read from stdin)."#)
                 .allow_hyphen_values(true)
                 .required(true)
                 .index(1)))
         // paperback-cli recover --interactive
-        .subcommand(SubCommand::with_name("recover")
-            .arg(Arg::with_name("interactive")
+        .subcommand(App::new("recover")
+            .arg(Arg::new("interactive")
                 .long("interactive")
                 .help("Ask for data stored in QR codes interactively rather than scanning images.")
                 .possible_values(&["true", "false"])
                 .default_value("true"))
-            .arg(Arg::with_name("OUTPUT")
+            .arg(Arg::new("OUTPUT")
                 .help(r#"Path to write recovered secret data to ("-" to write to stdout)."#)
                 .allow_hyphen_values(true)
                 .required(true)
                 .index(1)))
         // paperback-cli expand --interactive -n <SHARDS>
-        .subcommand(SubCommand::with_name("expand")
-            .arg(Arg::with_name("interactive")
+        .subcommand(App::new("expand")
+            .arg(Arg::new("interactive")
                 .long("interactive")
                 .help(r#"Ask for data stored in QR codes interactively rather than scanning images."#)
                 .possible_values(&["true", "false"])
                 .default_value("true"))
-            .arg(Arg::with_name("new_shards")
-                .short("n")
+            .arg(Arg::new("new_shards")
+                .short('n')
                 .long("new-shards")
                 .value_name("NUM SHARDS")
                 .help(r#"Number of new shards to create."#)
                 .takes_value(true)
                 .required(true)))
-        .subcommand(raw::subcommands())
-        .get_matches();
+        .subcommand(raw::subcommands());
 
-    let ret = match matches.subcommand() {
-        ("raw", Some(sub_matches)) => raw::submatch(sub_matches),
-        ("backup", Some(sub_matches)) => backup(sub_matches),
-        ("recover", Some(sub_matches)) => recover(sub_matches),
-        ("expand", Some(sub_matches)) => expand(sub_matches),
-        (subcommand, _) => Err(anyhow!("unknown subcommand '{}'", subcommand)),
+    let ret = match app.get_matches_mut().subcommand() {
+        Some(("raw", sub_matches)) => raw::submatch(&mut app, sub_matches),
+        Some(("backup", sub_matches)) => backup(sub_matches),
+        Some(("recover", sub_matches)) => recover(sub_matches),
+        Some(("expand", sub_matches)) => expand(sub_matches),
+        Some((subcommand, _)) => {
+            // We should never end up here.
+            app.write_help(&mut io::stderr())?;
+            Err(anyhow!("unknown subcommand '{}'", subcommand))
+        }
+        None => {
+            app.write_help(&mut io::stderr())?;
+            Err(anyhow!("no subcommand specified"))
+        }
     }?;
 
     Ok(ret)

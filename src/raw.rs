@@ -23,14 +23,14 @@ use std::{
 };
 
 use anyhow::{anyhow, Context, Error};
-use clap::{App, Arg, ArgMatches, SubCommand};
+use clap::{App, Arg, ArgMatches};
 
 extern crate paperback_core;
 use paperback_core::latest as paperback;
 
 const ENCODING_BASE: multibase::Base = multibase::Base::Base32Z;
 
-fn raw_backup(matches: &ArgMatches<'_>) -> Result<(), Error> {
+fn raw_backup(matches: &ArgMatches) -> Result<(), Error> {
     use paperback::{Backup, ToWire};
 
     let sealed: bool = matches
@@ -122,7 +122,7 @@ fn read_oneline_file(prompt: &str, path_or_stdin: &str) -> Result<String, Error>
         .ok_or_else(|| anyhow!("no lines read"))??)
 }
 
-fn raw_restore(matches: &ArgMatches<'_>) -> Result<(), Error> {
+fn raw_restore(matches: &ArgMatches) -> Result<(), Error> {
     use paperback::{EncryptedKeyShard, FromWire, MainDocument, UntrustedQuorum};
 
     let main_document_path = matches
@@ -200,7 +200,7 @@ fn raw_restore(matches: &ArgMatches<'_>) -> Result<(), Error> {
     Ok(())
 }
 
-fn raw_expand(matches: &ArgMatches<'_>) -> Result<(), Error> {
+fn raw_expand(matches: &ArgMatches) -> Result<(), Error> {
     use paperback::{EncryptedKeyShard, FromWire, ToWire, UntrustedQuorum};
 
     let shard_paths = matches
@@ -265,86 +265,94 @@ fn raw_expand(matches: &ArgMatches<'_>) -> Result<(), Error> {
     Ok(())
 }
 
-pub(crate) fn submatch(matches: &ArgMatches<'_>) -> Result<(), Error> {
+pub(crate) fn submatch(app: &mut App<'_>, matches: &ArgMatches) -> Result<(), Error> {
     match matches.subcommand() {
-        ("backup", Some(sub_matches)) => raw_backup(sub_matches),
-        ("restore", Some(sub_matches)) => raw_restore(sub_matches),
-        ("expand", Some(sub_matches)) => raw_expand(sub_matches),
-        (subcommand, _) => Err(anyhow!("unknown subcommand 'raw {}'", subcommand)),
+        Some(("backup", sub_matches)) => raw_backup(sub_matches),
+        Some(("restore", sub_matches)) => raw_restore(sub_matches),
+        Some(("expand", sub_matches)) => raw_expand(sub_matches),
+        Some((subcommand, _)) => {
+            // We should never end up here.
+            app.write_help(&mut io::stderr())?;
+            Err(anyhow!("unknown subcommand 'raw {}'", subcommand))
+        }
+        None => {
+            app.write_help(&mut io::stderr())?;
+            Err(anyhow!("no 'raw' subcommand specified"))
+        }
     }
 }
 
-pub(crate) fn subcommands<'a, 'b>() -> App<'a, 'b> {
-    SubCommand::with_name("raw")
+pub(crate) fn subcommands<'a>() -> App<'a> {
+    App::new("raw")
             .about("Operate using raw text data, rather than on PDF documents. This mode is not recommended for general use, since it might be more complicated for inexperienced users to recover the document.")
             // paperback-cli raw backup [--sealed] --quorum-size <QUORUM SIZE> --shards <SHARDS> INPUT
-            .subcommand(SubCommand::with_name("backup")
+            .subcommand(App::new("backup")
                 .about("Create a new paperback backup.")
-                .arg(Arg::with_name("sealed")
+                .arg(Arg::new("sealed")
                     .long("sealed")
                     .help("Create a sealed backup, which cannot be expanded (have new shards be created) after creation.")
                     .possible_values(&["true", "false"])
                     .default_value("false"))
-                .arg(Arg::with_name("quorum_size")
-                    .short("n")
+                .arg(Arg::new("quorum_size")
+                    .short('n')
                     .long("quorum-size")
                     .value_name("QUORUM SIZE")
                     .help("Number of shards required to recover the document (must not be larger than --shards).")
                     .takes_value(true)
                     .required(true))
-                .arg(Arg::with_name("shards")
-                    .short("k")
+                .arg(Arg::new("shards")
+                    .short('k')
                     .long("shards")
                     .value_name("NUM SHARDS")
                     .help("Number of shards to create (must not be smaller than --quorum-size).")
                     .takes_value(true)
                     .required(true))
-                .arg(Arg::with_name("INPUT")
+                .arg(Arg::new("INPUT")
                     .help(r#"Path to file containing secret data to backup ("-" to read from stdin)."#)
                     .allow_hyphen_values(true)
                     .required(true)
                     .index(1)))
             // paperback-cli raw restore --main-document <MAIN DOCUMENT> (--shards <SHARD>)... OUTPUT
-            .subcommand(SubCommand::with_name("restore")
+            .subcommand(App::new("restore")
                 .about("Restore the secret data from a paperback backup.")
-                .arg(Arg::with_name("main_document")
-                    .short("M")
+                .arg(Arg::new("main_document")
+                    .short('M')
                     .long("main-document")
                     .value_name("MAIN DOCUMENT PATH")
                     .help(r#"Path to paperback main document ("-" to read from stdin)."#)
                     .takes_value(true)
                     .required(true))
-                .arg(Arg::with_name("shards")
-                    .short("s")
+                .arg(Arg::new("shards")
+                    .short('s')
                     .long("shard")
                     .value_name("SHARD PATH")
                     .help(r#"Path to each paperback shard ("-" to read from stdin)."#)
                     .takes_value(true)
-                    .multiple(true)
+                    .multiple_occurrences(true)
                     .number_of_values(1)
                     .required(true))
-                .arg(Arg::with_name("OUTPUT")
+                .arg(Arg::new("OUTPUT")
                     .help(r#"Path to write recovered secret data to ("-" to write to stdout)."#)
                     .allow_hyphen_values(true)
                     .required(true)
                     .index(1)))
             // paperback-cli raw expand --new-shards <N> (--shards <SHARD>)...
-            .subcommand(SubCommand::with_name("expand")
+            .subcommand(App::new("expand")
                 .about("Restore the secret data from a paperback backup.")
-                .arg(Arg::with_name("new_shards")
-                    .short("n")
+                .arg(Arg::new("new_shards")
+                    .short('n')
                     .long("new-shards")
                     .value_name("NUM SHARDS")
                     .help(r#"Number of new shards to create."#)
                     .takes_value(true)
                     .required(true))
-                .arg(Arg::with_name("shards")
-                    .short("s")
+                .arg(Arg::new("shards")
+                    .short('s')
                     .long("shard")
                     .value_name("SHARDS")
                     .help(r#"Path to each paperback shard ("-" to read from stdin)."#)
                     .takes_value(true)
-                    .multiple(true)
+                    .multiple_occurrences(true)
                     .number_of_values(1)
                     .required(true)))
 }
