@@ -126,7 +126,7 @@ about what a *producer* of a document should do.
 
 ```
 paperback: resilient paper backups for the very paranoid
-Copyright (C) 2018-2020 Aleksa Sarai <cyphar@cyphar.com>
+Copyright (C) 2018-2022 Aleksa Sarai <cyphar@cyphar.com>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
