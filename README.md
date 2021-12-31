@@ -24,10 +24,10 @@ To make this system as simple-to-use as possible, `paperback` creates several
 PDFs which you can then print out and laminate, ready for recovery. Here are
 some examples of the generated documents:
 
-|               |                         Mockups                           |                      Current Status                    |
-| ------------- | :-------------------------------------------------------: | :----------------------------------------------------: |
-| Main Document | <img height="400" src="contrib/mockup-maindocument.png"/> | <img height="400" src="contrib/poc-maindocument.png"/> |
-| Key Shard     | <img height="400" src="contrib/mockup-keyshard.png"/>     | <img height="400" src="contrib/poc-keyshard.png"/>     |
+|               |                                Mockups                                |                           Current Status                           |
+| ------------- | :-------------------------------------------------------------------: | :----------------------------------------------------------------: |
+| Main Document | <img style="max-height:400px" src="contrib/mockup-maindocument.png"/> | <img style="max-height:400px" src="contrib/poc-maindocument.png"/> |
+| Key Shard     | <img style="max-height:400px" src="contrib/mockup-keyshard.png"/>     | <img style="max-height:400px" src="contrib/poc-keyshard.png"/>     |
 
 These "key shards" can then be given to a set of semi-trusted people.
 `paperback` also supports `(k, n)` redundancy, allowing for `n` key shards to
