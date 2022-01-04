@@ -63,6 +63,14 @@ mod colours {
         icc_profile: None,
     });
 
+    // #ffffff
+    pub(super) const WHITE: Color = Color::Rgb(Rgb {
+        r: 1.0,
+        g: 1.0,
+        b: 1.0,
+        icc_profile: None,
+    });
+
     // #ff6600
     pub(super) const MAIN_DOCUMENT_TRIM: Color = Color::Rgb(Rgb {
         r: 1.0,
@@ -80,8 +88,70 @@ mod colours {
     });
 }
 
-fn px_to_mm(px: Px) -> Mm {
-    px.into_pt(SVG_DPI).into()
+struct Text<'a> {
+    inner: &'a str,
+    colour: Color,
+    font: &'a IndirectFontRef,
+    font_size: Pt,
+}
+
+fn banner(
+    layer: &PdfLayerReference,
+    mut top: Mm,
+    (width, margin, banner_margin): (Mm, Mm, Mm),
+    header: Text<'_>,
+    description: Option<Text<'_>>,
+    banner_colour: Color,
+) -> Mm {
+    //let header = header.inner.as_ref();
+
+    const BANNER_HEIGHT: Mm = Mm(9.0);
+    top -= banner_margin;
+
+    // Dashed line box where the QR code would go.
+    let points = vec![
+        (Point::new(Mm(0.0), top), false),
+        (Point::new(width, top), false),
+        (Point::new(width, top - BANNER_HEIGHT), false),
+        (Point::new(Mm(0.0), top - BANNER_HEIGHT), false),
+    ];
+    let line = Line {
+        points,
+        is_closed: true,
+        has_fill: true,
+        has_stroke: false,
+        is_clipping_path: false,
+    };
+
+    layer.set_fill_color(banner_colour);
+    layer.add_shape(line);
+
+    // Add header text.
+    layer.begin_text_section();
+    {
+        layer.set_font(header.font, header.font_size.0);
+        layer.set_line_height(header.font_size.0);
+        layer.set_word_spacing(1.2);
+        layer.set_character_spacing(1.0);
+        layer.set_text_rendering_mode(TextRenderingMode::Fill);
+
+        layer.set_text_cursor(
+            margin,
+            top - (BANNER_HEIGHT + Pt(header.font_size.0).into()) / 2.0,
+        );
+        layer.set_fill_color(header.colour);
+        layer.write_text(header.inner, header.font);
+
+        // Add description.
+        if let Some(description) = description {
+            layer.set_font(description.font, description.font_size.0);
+            layer.write_text("  ", description.font);
+            layer.write_text(description.inner, description.font);
+        }
+    }
+    layer.end_text_section();
+
+    BANNER_HEIGHT + banner_margin
 }
 
 fn qr_with_fallback<D: AsRef<[u8]>>(
@@ -92,8 +162,15 @@ fn qr_with_fallback<D: AsRef<[u8]>>(
     font: &IndirectFontRef,
     font_size: f64,
 ) -> Result<Mm, Error> {
+    const DATA_MARGIN: Mm = Mm(3.0);
+
     let data = data.as_ref();
-    let qr_size = width * qr_fraction;
+    // Can't use std::cmp::min sadly.
+    let qr_size = if top - margin < width * qr_fraction {
+        top - margin
+    } else {
+        width * qr_fraction
+    };
 
     // TODO: Use azul-text-layout for this function so that we get line wrapping
     // done for us, as well as being able to use the computed text dimensions to
@@ -122,17 +199,18 @@ fn qr_with_fallback<D: AsRef<[u8]>>(
         })
         .collect::<Vec<String>>();
 
-    let data_height = Mm::from(Pt(font_size + 2.0)) * (data_lines.len() as f64);
+    let data_height: Mm = Pt(font_size + (font_size + 2.0) * data_lines.len() as f64).into();
+    let padded_data_height = data_height + DATA_MARGIN * 2.0;
     // Can't use std::cmp::max sadly.
-    let total_height = if qr_size > data_height {
+    let total_height = if qr_size > padded_data_height {
         qr_size
     } else {
-        data_height
+        padded_data_height
     };
 
     let (qr_y, data_y) = (
         total_height / 2.0 + qr_size / 2.0,
-        total_height / 2.0 - data_height / 2.0,
+        total_height / 2.0 - data_height / 2.0 + Mm::from(Pt(font_size)),
     );
     let (qr_x, data_x) = (margin, margin + qr_size + margin);
 
@@ -140,8 +218,8 @@ fn qr_with_fallback<D: AsRef<[u8]>>(
     let qr_svg = Svg::parse(&qr::generate_one_code(data)?.render::<svg::Color>().build())?
         .into_xobject(layer);
     let (scale_x, scale_y) = (
-        qr_size / px_to_mm(qr_svg.width),
-        qr_size / px_to_mm(qr_svg.height),
+        qr_size / Mm::from(qr_svg.width.into_pt(SVG_DPI)),
+        qr_size / Mm::from(qr_svg.height.into_pt(SVG_DPI)),
     );
     qr_svg.add_to_layer(
         layer,
@@ -196,7 +274,7 @@ fn qr_with_fallback<D: AsRef<[u8]>>(
 
 const A4_WIDTH: Mm = Mm(210.0);
 const A4_HEIGHT: Mm = Mm(297.0);
-const A4_MARGIN: Mm = Mm(10.0);
+const A4_MARGIN: Mm = Mm(5.0);
 const QR_MARGIN: Mm = Mm(5.0);
 
 const FONT_ROBOTOSLAB: &[u8] = include_bytes!("fonts/RobotoSlab-Regular.ttf");
@@ -299,7 +377,26 @@ impl ToPdf for MainDocument {
             current_layer.set_line_height(10.0 + 2.0);
         }
         current_layer.end_text_section();
-        current_y += (Pt(22.0) + Pt(12.0) * 6.0).into();
+        current_y += (Pt(22.0) + Pt(12.0) * 4.0).into();
+
+        current_y += banner(
+            &current_layer,
+            A4_HEIGHT - current_y,
+            (A4_WIDTH, A4_MARGIN, Mm(3.0)),
+            Text {
+                inner: "① Document",
+                colour: colours::WHITE,
+                font: &text_font,
+                font_size: Pt(10.0),
+            },
+            Some(Text {
+                inner: "Data section, encrypted with secret key stored in the key shards.",
+                colour: colours::WHITE,
+                font: &text_font,
+                font_size: Pt(8.0),
+            }),
+            colours::MAIN_DOCUMENT_TRIM,
+        ) + Mm(2.0);
 
         // TODO: Get rid of this once we have nice QR code scanning.
         println!("Main Document:");
@@ -313,10 +410,6 @@ impl ToPdf for MainDocument {
             .map(|code| code.into_xobject(&current_layer));
         for _ in 0..9 {
             let target_size = (A4_WIDTH - A4_MARGIN * 2.0) / 3.0;
-            if current_x + target_size > A4_WIDTH {
-                current_x = A4_MARGIN;
-                current_y += target_size;
-            }
             match data_qr_refs.next() {
                 Some(svg) => {
                     let (width, height) = (svg.width, svg.height);
@@ -326,8 +419,8 @@ impl ToPdf for MainDocument {
                             translate_x: Some(current_x),
                             translate_y: Some(A4_HEIGHT - (current_y + target_size)),
                             dpi: Some(SVG_DPI),
-                            scale_x: Some(target_size / px_to_mm(width)),
-                            scale_y: Some(target_size / px_to_mm(height)),
+                            scale_x: Some(target_size / Mm::from(width.into_pt(SVG_DPI))),
+                            scale_y: Some(target_size / Mm::from(height.into_pt(SVG_DPI))),
                             ..Default::default()
                         },
                     );
@@ -383,8 +476,8 @@ impl ToPdf for MainDocument {
                 }
             };
             current_x += target_size;
-            if current_x > A4_WIDTH {
-                current_x = Mm(0.0);
+            if current_x + target_size > A4_WIDTH {
+                current_x = A4_MARGIN;
                 current_y += target_size;
             }
         }
@@ -393,13 +486,31 @@ impl ToPdf for MainDocument {
                 "only 9 codes allowed in this version of paperback".to_string(),
             ));
         }
-        current_y = A4_HEIGHT - (A4_WIDTH * 0.2 + A4_MARGIN);
+
+        current_y += banner(
+            &current_layer,
+            A4_HEIGHT - current_y,
+            (A4_WIDTH, A4_MARGIN, Mm(3.0)),
+            Text {
+                inner: "② Checksum",
+                colour: colours::WHITE,
+                font: &text_font,
+                font_size: Pt(10.0),
+            },
+            Some(Text {
+                inner: "Verifies the document was scanned correctly. The last 8 characters are the document identifier.",
+                colour: colours::WHITE,
+                font: &text_font,
+                font_size: Pt(8.0),
+            }),
+            colours::MAIN_DOCUMENT_TRIM,
+        ) + Mm(2.0);
 
         // Document checksum.
         current_y += qr_with_fallback(
             &current_layer,
             A4_HEIGHT - current_y,
-            (A4_WIDTH, A4_MARGIN, 0.2),
+            (A4_WIDTH, A4_MARGIN, 0.18),
             self.checksum().to_bytes(),
             &monospace_font,
             10.0,
@@ -468,8 +579,7 @@ impl ToPdf for (&EncryptedKeyShard, &KeyShardCodewords) {
             current_layer.set_fill_color(colours::KEY_SHARD_TRIM);
             current_layer.write_text(decrypted_shard.id(), &monospace_font);
             current_layer.set_fill_color(colours::BLACK);
-            current_layer.set_line_height(10.0 + 2.0);
-            current_layer.add_line_break();
+            current_layer.set_line_height(14.0 + 2.0);
             current_layer.add_line_break();
 
             // "Document".
@@ -484,8 +594,6 @@ impl ToPdf for (&EncryptedKeyShard, &KeyShardCodewords) {
             current_layer.set_fill_color(colours::MAIN_DOCUMENT_TRIM);
             current_layer.write_text(decrypted_shard.document_id(), &monospace_font);
             current_layer.set_fill_color(colours::BLACK);
-            current_layer.set_line_height(10.0 + 2.0);
-            current_layer.add_line_break();
         }
         current_layer.end_text_section();
         current_layer.begin_text_section();
@@ -506,14 +614,13 @@ impl ToPdf for (&EncryptedKeyShard, &KeyShardCodewords) {
             current_layer.set_fill_color(colours::GREY);
             current_layer.write_text("paperback-v0", &monospace_font);
             current_layer.set_fill_color(colours::BLACK);
-            current_layer.set_line_height(10.0 + 2.0);
         }
         current_layer.end_text_section();
         current_layer.begin_text_section();
         {
             current_layer.set_text_cursor(
                 A5_MARGIN + Mm(45.0),
-                A5_HEIGHT - (current_y + (Pt(12.0) * 5.0).into()),
+                A5_HEIGHT - (current_y + Pt(12.0 + 20.0 * 2.0 + 16.0 - 12.0 * 2.0).into()),
             );
 
             // Details.
@@ -524,7 +631,26 @@ impl ToPdf for (&EncryptedKeyShard, &KeyShardCodewords) {
             current_layer.write_text("See cyphar.com/paperback for more details.", &text_font);
         }
         current_layer.end_text_section();
-        current_y += Mm(40.0);
+        current_y += Mm(25.0);
+
+        current_y += banner(
+            &current_layer,
+            A5_HEIGHT - current_y,
+            (A5_WIDTH, A5_MARGIN, Mm(1.0)),
+            Text {
+                inner: "① Shard",
+                colour: colours::WHITE,
+                font: &text_font,
+                font_size: Pt(10.0),
+            },
+            Some(Text {
+                inner: "Key shard data, encrypted using the codewords.",
+                colour: colours::WHITE,
+                font: &text_font,
+                font_size: Pt(8.0),
+            }),
+            colours::KEY_SHARD_TRIM,
+        );
 
         current_y += qr_with_fallback(
             &current_layer,
@@ -534,6 +660,25 @@ impl ToPdf for (&EncryptedKeyShard, &KeyShardCodewords) {
             &monospace_font,
             8.0,
         )?;
+
+        current_y += banner(
+            &current_layer,
+            A5_HEIGHT - current_y,
+            (A5_WIDTH, A5_MARGIN, Mm(1.0)),
+            Text {
+                inner: "② Checksum",
+                colour: colours::WHITE,
+                font: &text_font,
+                font_size: Pt(10.0),
+            },
+            Some(Text {
+                inner: "Verifies the key shard was scanned correctly.",
+                colour: colours::WHITE,
+                font: &text_font,
+                font_size: Pt(8.0),
+            }),
+            colours::KEY_SHARD_TRIM,
+        );
 
         current_y += qr_with_fallback(
             &current_layer,
@@ -545,23 +690,24 @@ impl ToPdf for (&EncryptedKeyShard, &KeyShardCodewords) {
         )?;
 
         // "Cut here" line.
-        let cut_here_y = {
-            let old_current_y = current_y;
-            current_y = A5_HEIGHT - Mm(35.0); // For shard codewords.
-            (current_y + old_current_y) / 2.0
-        };
         {
             let scissors_svg = Svg::parse(SCISSORS_SVG)?;
             let scissors_svg_ref = scissors_svg.into_xobject(&current_layer);
 
             // For scissors, scale to the target height.
             let target_height = Mm(5.0);
-            let scale = target_height / px_to_mm(scissors_svg_ref.height);
+            let scale = target_height / Mm::from(scissors_svg_ref.height.into_pt(SVG_DPI));
 
             // Dashed line.
             let points = vec![
-                (Point::new(Mm(0.0), A5_HEIGHT - cut_here_y), false),
-                (Point::new(A5_WIDTH, A5_HEIGHT - cut_here_y), false),
+                (
+                    Point::new(Mm(0.0), A5_HEIGHT - (current_y + target_height / 2.0)),
+                    false,
+                ),
+                (
+                    Point::new(A5_WIDTH, A5_HEIGHT - (current_y + target_height / 2.0)),
+                    false,
+                ),
             ];
             let line = Line {
                 points,
@@ -584,13 +730,35 @@ impl ToPdf for (&EncryptedKeyShard, &KeyShardCodewords) {
                 &current_layer,
                 SvgTransform {
                     translate_x: Some(A5_MARGIN),
-                    translate_y: Some(A5_HEIGHT - (cut_here_y + target_height / 2.0)),
+                    translate_y: Some(A5_HEIGHT - (current_y + target_height)),
                     scale_x: Some(scale),
                     scale_y: Some(scale),
                     ..Default::default()
                 },
             );
+            current_y += target_height;
         }
+
+        current_y += banner(
+            &current_layer,
+            A5_HEIGHT - current_y,
+            (A5_WIDTH, A5_MARGIN, Mm(1.0)),
+            Text {
+                inner: "③ Codewords",
+                colour: colours::WHITE,
+                font: &text_font,
+                font_size: Pt(10.0),
+            },
+            Some(Text {
+                inner: "Encrypts the key shard data. Can be optionally cut off.",
+                colour: colours::WHITE,
+                font: &text_font,
+                font_size: Pt(8.0),
+            }),
+            colours::KEY_SHARD_TRIM,
+        );
+
+        current_y = A5_HEIGHT - Mm(30.0);
 
         // Shard codewords.
         current_layer.begin_text_section();
@@ -611,8 +779,7 @@ impl ToPdf for (&EncryptedKeyShard, &KeyShardCodewords) {
             current_layer.set_fill_color(colours::KEY_SHARD_TRIM);
             current_layer.write_text(decrypted_shard.id(), &monospace_font);
             current_layer.set_fill_color(colours::BLACK);
-            current_layer.set_line_height(10.0 + 2.0);
-            current_layer.add_line_break();
+            current_layer.set_line_height(12.0 + 2.0);
             current_layer.add_line_break();
 
             // "Document".
@@ -627,8 +794,6 @@ impl ToPdf for (&EncryptedKeyShard, &KeyShardCodewords) {
             current_layer.set_fill_color(colours::MAIN_DOCUMENT_TRIM);
             current_layer.write_text(decrypted_shard.document_id(), &monospace_font);
             current_layer.set_fill_color(colours::BLACK);
-            current_layer.set_line_height(10.0 + 2.0);
-            current_layer.add_line_break();
         }
         current_layer.end_text_section();
         current_layer.begin_text_section();
