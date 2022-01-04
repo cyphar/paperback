@@ -30,12 +30,12 @@ edition = "2018"
 [dependencies]
 aead = "^0.4"
 anyhow = "^1"
-chacha20poly1305 = "^0.8"
-digest = "^0.9"
+chacha20poly1305 = "^0.9"
+digest = "^0.10"
 ed25519-dalek = "^1.0.1"
 itertools = "^0.10"
 multibase = "^0.9"
-multihash = "^0.13"
+multihash = "^0.15"
 nom = "^7" # This must match the unsigned-varint version.
 rand = "^0.7" # This must match the ed25519-dalek version.
 printpdf = { version = "^0.5", features = ["svg"] }
