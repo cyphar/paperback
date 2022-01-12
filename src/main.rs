@@ -135,7 +135,14 @@ fn read_multibase_qr<S: AsRef<str>, T: FromWire>(prompt: S) -> Result<T, Error> 
     let prompt = prompt.as_ref();
     let mut joiner = qr::Joiner::new();
     while !joiner.complete() {
-        let part: qr::Part = read_multibase(prompt)?;
+        let part: qr::Part = read_multibase(format!(
+            "{} ({} codes remaining)",
+            prompt,
+            match joiner.remaining() {
+                None => "unknown number of".to_string(),
+                Some(n) => n.to_string(),
+            }
+        ))?;
         joiner.add_part(part)?;
     }
     T::from_wire(joiner.combine_parts()?)
@@ -288,6 +295,7 @@ fn main() -> Result<(), Box<dyn StdError>> {
         .about("Operate on a paperback backup using a basic CLI interface.")
         // paperback-cli backup [--sealed] -n <QUORUM SIZE> -k <SHARDS> INPUT
         .subcommand(App::new("backup")
+            .about(r#"Create a paperback backup."#)
             .arg(Arg::new("sealed")
                 .long("sealed")
                 .help("Create a sealed backup, which cannot be expanded (have new shards be created) after creation.")
@@ -314,6 +322,7 @@ fn main() -> Result<(), Box<dyn StdError>> {
                 .index(1)))
         // paperback-cli recover --interactive
         .subcommand(App::new("recover")
+            .about(r#"Recover a paperback backup."#)
             .arg(Arg::new("interactive")
                 .long("interactive")
                 .help("Ask for data stored in QR codes interactively rather than scanning images.")
@@ -326,6 +335,7 @@ fn main() -> Result<(), Box<dyn StdError>> {
                 .index(1)))
         // paperback-cli expand --interactive -n <SHARDS>
         .subcommand(App::new("expand")
+            .about(r#"Create new key shards from a quorum of old key shards."#)
             .arg(Arg::new("interactive")
                 .long("interactive")
                 .help(r#"Ask for data stored in QR codes interactively rather than scanning images."#)
