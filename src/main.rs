@@ -25,8 +25,8 @@ use std::{
     io::{prelude::*, BufReader, BufWriter},
 };
 
-use anyhow::{anyhow, ensure, Context, Error};
-use clap::{App, Arg, ArgMatches};
+use anyhow::{anyhow, bail, ensure, Context, Error};
+use clap::{App, Arg, ArgGroup, ArgMatches};
 
 extern crate paperback_core;
 use paperback_core::latest as paperback;
@@ -288,6 +288,48 @@ fn expand(matches: &ArgMatches) -> Result<(), Error> {
     Ok(())
 }
 
+fn reprint(matches: &ArgMatches) -> Result<(), Error> {
+    let interactive: bool = matches
+        .value_of("interactive")
+        .expect("invalid --interactive argument")
+        .parse()
+        .context("--interactive argument was not a boolean")?;
+    ensure!(interactive, "PDF scanning not yet implemented");
+
+    let mut main_document: MainDocument;
+    let mut shard_pair: (EncryptedKeyShard, KeyShardCodewords);
+    let (pdf, path_basename): (&mut dyn ToPdf, String) = if matches.is_present("main-document") {
+        main_document = read_multibase_qr("Main Document")?;
+        // TODO: Ask the user to input the checksum...
+        println!("Document Checksum: {}", main_document.checksum_string());
+
+        let pathname = format!("main-document-{}.pdf", main_document.id());
+        (&mut main_document, pathname)
+    } else if matches.is_present("shard") {
+        let encrypted_shard: EncryptedKeyShard = read_multibase("Key Shard")?;
+        // TODO: Ask the user to input the checksum...
+        println!("Shard Checksum: {}", encrypted_shard.checksum_string());
+        let codewords = read_codewords("Shard Codewords")?;
+
+        let shard = encrypted_shard
+            .decrypt(codewords.clone())
+            .map_err(|err| anyhow!(err)) // TODO: Fix this once FromWire supports non-String errors.
+            .with_context(|| "decrypting shard")?;
+        let pathname = format!("key-shard-{}-{}.pdf", shard.document_id(), shard.id());
+
+        shard_pair = (encrypted_shard, codewords);
+        (&mut shard_pair, pathname)
+    } else {
+        // We should never reach here.
+        bail!("neither --shard nor --main-document type flags passed")
+    };
+
+    pdf.to_pdf()?
+        .save(&mut BufWriter::new(File::create(path_basename)?))?;
+
+    Ok(())
+}
+
 fn main() -> Result<(), Box<dyn StdError>> {
     let mut app = App::new("paperback-cli")
         .version("0.0.0")
@@ -348,6 +390,23 @@ fn main() -> Result<(), Box<dyn StdError>> {
                 .help(r#"Number of new shards to create."#)
                 .takes_value(true)
                 .required(true)))
+        // paperback-cli reprint --interactive [--main-document|--shard]
+        .subcommand(App::new("reprint")
+            .about(r#""Re-print" a paperback document by generating a new PDF from an existing PDF."#)
+            .arg(Arg::new("interactive")
+                .long("interactive")
+                .help("Ask for data stored in QR codes interactively rather than scanning images.")
+                .possible_values(&["true", "false"])
+                .default_value("true"))
+            .arg(Arg::new("main-document")
+                .long("main-document")
+                .help(r#"Reprint a paperback main document."#))
+            .arg(Arg::new("shard")
+                .long("shard")
+                .help(r#"Reprint a paperback key shard."#))
+            .group(ArgGroup::new("type")
+                .args(&["main-document", "shard"])
+                .required(true)))
         .subcommand(raw::subcommands());
 
     let ret = match app.get_matches_mut().subcommand() {
@@ -355,6 +414,7 @@ fn main() -> Result<(), Box<dyn StdError>> {
         Some(("backup", sub_matches)) => backup(sub_matches),
         Some(("recover", sub_matches)) => recover(sub_matches),
         Some(("expand", sub_matches)) => expand(sub_matches),
+        Some(("reprint", sub_matches)) => reprint(sub_matches),
         Some((subcommand, _)) => {
             // We should never end up here.
             app.write_help(&mut io::stderr())?;
