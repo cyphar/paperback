@@ -150,11 +150,7 @@ fn read_multibase_qr<S: AsRef<str>, T: FromWire>(prompt: S) -> Result<T, Error> 
 }
 
 fn recover(matches: &ArgMatches) -> Result<(), Error> {
-    let interactive: bool = matches
-        .value_of("interactive")
-        .expect("invalid --interactive argument")
-        .parse()
-        .context("--interactive argument was not a boolean")?;
+    let interactive: bool = matches.is_present("interactive");
     ensure!(interactive, "PDF scanning not yet implemented");
     let output_path = matches
         .value_of("OUTPUT")
@@ -231,11 +227,7 @@ fn recover(matches: &ArgMatches) -> Result<(), Error> {
 }
 
 fn expand(matches: &ArgMatches) -> Result<(), Error> {
-    let interactive: bool = matches
-        .value_of("interactive")
-        .expect("invalid --interactive argument")
-        .parse()
-        .context("--interactive argument was not a boolean")?;
+    let interactive: bool = matches.is_present("interactive");
     ensure!(interactive, "PDF scanning not yet implemented");
     let num_new_shards: u32 = matches
         .value_of("new_shards")
@@ -314,11 +306,7 @@ fn expand(matches: &ArgMatches) -> Result<(), Error> {
 }
 
 fn reprint(matches: &ArgMatches) -> Result<(), Error> {
-    let interactive: bool = matches
-        .value_of("interactive")
-        .expect("invalid --interactive argument")
-        .parse()
-        .context("--interactive argument was not a boolean")?;
+    let interactive: bool = matches.is_present("interactive");
     ensure!(interactive, "PDF scanning not yet implemented");
 
     let mut main_document: MainDocument;
@@ -396,8 +384,8 @@ fn main() -> Result<(), Box<dyn StdError>> {
             .arg(Arg::new("interactive")
                 .long("interactive")
                 .help("Ask for data stored in QR codes interactively rather than scanning images.")
-                .possible_values(&["true", "false"])
-                .default_value("true"))
+                // TODO: Make this optional.
+                .required(true))
             .arg(Arg::new("OUTPUT")
                 .help(r#"Path to write recovered secret data to ("-" to write to stdout)."#)
                 .allow_hyphen_values(true)
@@ -409,8 +397,8 @@ fn main() -> Result<(), Box<dyn StdError>> {
             .arg(Arg::new("interactive")
                 .long("interactive")
                 .help(r#"Ask for data stored in QR codes interactively rather than scanning images."#)
-                .possible_values(&["true", "false"])
-                .default_value("true"))
+                // TODO: Make this optional.
+                .required(true))
             .arg(Arg::new("new_shards")
                 .short('n')
                 .long("new-shards")
@@ -424,8 +412,8 @@ fn main() -> Result<(), Box<dyn StdError>> {
             .arg(Arg::new("interactive")
                 .long("interactive")
                 .help("Ask for data stored in QR codes interactively rather than scanning images.")
-                .possible_values(&["true", "false"])
-                .default_value("true"))
+                // TODO: Make this optional.
+                .required(true))
             .arg(Arg::new("main-document")
                 .long("main-document")
                 .help(r#"Reprint a paperback main document."#))
