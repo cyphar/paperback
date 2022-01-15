@@ -69,6 +69,80 @@ the included design document][design].
 
 [design]: DESIGN.md
 
+### Usage ###
+
+Paperback is written in [Rust][rust]. In order to build Rust you need to have a
+copy of [cargo][cargo]. Paperback can be built like this:
+
+
+```
+% cargo build --release
+warning: patch for the non root package will be ignored, specify patch at the workspace root:
+package:   /home/cyphar/src/paperback/pkg/paperback-core/Cargo.toml
+workspace: /home/cyphar/src/paperback/Cargo.toml
+    Finished release [optimized] target(s) in 3m 42s
+% ./target/release/paperback ...
+```
+
+The general usage of paperback is:
+
+ * Create a backup using `paperback backup -n THRESHOLD -k SHARDS INPUT_FILE`.
+   The `-n` threshold is how many shards are necessary to recover the secret
+   (must be at least one), the `-k` shards is the number of shards that will be
+   created (must be at least as large as the threshold). The input file is the
+   path to a file containing your secret data (or `-` to read from stdin).
+
+   The main document will be saved in the current directory with the name
+   `main_document-xxxxxxxx.pdf` (`xxxxxxxx` being the document ID) and the key
+   shards will be saved in the current directory with names resembling
+   `key_shard-xxxxxxxx-hyyyyyyy.pdf` (with `hyyyyyyy` being the shard ID).
+
+ * Recover a backup using `paperback recover --interactive`. You will be asked
+   to input the main document data, followed by the the shard data and
+   codewords.
+
+   Note that for key shards, the QR code data will be encoded differently to
+   the "text fallback". This is because it is more space efficient to store the
+   data in base10 with QR codes. As long as you copy the entire payload (in
+   either encoding), paperback will handle it correctly.
+
+   Paperback will tell you how many QR codes from the main document remain to
+   be scanned (they can be input in any order), as well as how many remaining
+   key shards need to be scanned (along with a list of the key shards already
+   scanned).
+
+ * Expand a quorum using `paperback expand -n SHARDS --interactive`. The `-n`
+   shards number is the number of new shards to be created. You will be asked
+   to input enough key shards to form a quorum.
+
+   Paperback will tell you how many remaining key shards need to be scanned
+   (along with a list of the key shards already scanned).
+
+   The new key shards will be saved as PDF files in the same way as with
+   `paperback backup`.
+
+ * Re-print an existing paperback document using `paperback reprint --[type]
+   --interactive`. `--[type]` can either be `--main-document` or `--shard` and
+   indicates what type of document needs to be reprinted.
+
+   You will be asked to enter the data of the document you have specified. The
+   new document will be saved as a PDF file in the same way as with `paperback
+   backup`.
+
+   When reprinting a main document, paperback will tell you how many QR codes
+   from the main document remain to be scanned (they can be input in any order).
+
+Note that when inputting data in "interactive mode" you have to put an extra
+blank space to indicate that you've finished inputting the data for that QR
+code. This is to allow you to break the input up over several lines.
+
+Currently paperback only supports "interactive" input. In the future, paperback
+will be able to automatically scan the data from each QR code in an image or
+PDF version of the documents.
+
+[rust]: https://www.rust-lang.org/
+[cargo]: https://doc.rust-lang.org/cargo/
+
 ### Paper Choices and Storage ###
 
 One of the most important things when considering using `paperback` is to keep
