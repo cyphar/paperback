@@ -32,8 +32,8 @@ extern crate paperback_core;
 use paperback_core::latest as paperback;
 
 use paperback::{
-    pdf::qr, wire, Backup, EncryptedKeyShard, FromWire, KeyShardCodewords, MainDocument, ToPdf,
-    UntrustedQuorum,
+    pdf::qr, wire, Backup, EncryptedKeyShard, FromWire, KeyShard, KeyShardCodewords, MainDocument,
+    ToPdf, UntrustedQuorum,
 };
 
 fn backup(matches: &ArgMatches) -> Result<(), Error> {
@@ -160,33 +160,45 @@ fn recover(matches: &ArgMatches) -> Result<(), Error> {
         .value_of("OUTPUT")
         .expect("required OUTPUT argument not given");
 
-    let main_document: MainDocument = read_multibase_qr("Main Document")?;
+    let main_document: MainDocument = read_multibase_qr("Enter a main document code")?;
     let quorum_size = main_document.quorum_size();
     // TODO: Ask the user to input the checksum...
-    println!("Document Checksum: {}", main_document.checksum_string());
+    println!(
+        "Main document checksum: {}",
+        main_document.checksum_string()
+    );
 
     println!("Document ID: {}", main_document.id());
-    println!("{} Shards Required", quorum_size);
+    println!("{} key shards required.", quorum_size);
 
     let mut quorum = UntrustedQuorum::new();
     quorum.main_document(main_document);
-    for idx in 0..quorum_size {
-        let encrypted_shard: EncryptedKeyShard =
-            read_multibase(format!("Shard {} of {}", idx + 1, quorum_size))?;
+    while quorum.num_untrusted_shards() < quorum_size as usize {
+        let idx = quorum.num_untrusted_shards() as u32;
+        let encrypted_shard: EncryptedKeyShard = read_multibase(format!(
+            "Quorum contains [{}] key shards.\nEnter key shard {} of {}",
+            quorum
+                .untrusted_shards()
+                .map(KeyShard::id)
+                .collect::<Vec<_>>()
+                .join(" "),
+            idx + 1,
+            quorum_size
+        ))?;
         // TODO: Ask the user to input the checksum...
         println!(
-            "Shard {} Checksum: {}",
+            "Key shard {} checksum: {}",
             idx + 1,
             encrypted_shard.checksum_string()
         );
 
-        let codewords = read_codewords(format!("Shard {} Codewords", idx + 1))?;
+        let codewords = read_codewords(format!("Enter key shard {} codewords", idx + 1))?;
         let shard = encrypted_shard
             .decrypt(&codewords)
             .map_err(|err| anyhow!(err)) // TODO: Fix this once FromWire supports non-String errors.
-            .with_context(|| format!("decrypting shard {}", idx + 1))?;
+            .with_context(|| format!("decrypting key shard {}", idx + 1))?;
 
-        println!("Loaded shard {}.", shard.id());
+        println!("Loaded key shard {}.", shard.id());
         quorum.push_shard(shard);
     }
 
@@ -232,31 +244,44 @@ fn expand(matches: &ArgMatches) -> Result<(), Error> {
         .context("--new-shards argument was not an unsigned integer")?;
 
     let mut quorum = UntrustedQuorum::new();
-    for idx in 0.. {
+    loop {
+        let idx = quorum.num_untrusted_shards() as u32;
         let encrypted_shard: EncryptedKeyShard = read_multibase(match quorum.quorum_size() {
-            None => format!("Shard {}", idx + 1),
-            Some(n) => format!("Shard {} of {}", idx + 1, n),
+            None => format!(
+                "Quorum contains no key shards.\nEnter key shard {}",
+                idx + 1
+            ),
+            Some(n) => format!(
+                "Quorum contains [{}] key shards.\nEnter key shard {} of {}",
+                quorum
+                    .untrusted_shards()
+                    .map(KeyShard::id)
+                    .collect::<Vec<_>>()
+                    .join(" "),
+                idx + 1,
+                n,
+            ),
         })?;
         // TODO: Ask the user to input the checksum...
         println!(
-            "Shard {} Checksum: {}",
+            "Key shard {} checksum: {}",
             idx + 1,
             encrypted_shard.checksum_string()
         );
 
-        let codewords = read_codewords(format!("Shard {} Codewords", idx + 1))?;
+        let codewords = read_codewords(format!("Enter key shard {} codewords", idx + 1))?;
         let shard = encrypted_shard
             .decrypt(&codewords)
             .map_err(|err| anyhow!(err)) // TODO: Fix this once FromWire supports non-String errors.
-            .with_context(|| format!("decrypting shard {}", idx + 1))?;
+            .with_context(|| format!("decrypting key shard {}", idx + 1))?;
 
-        println!("Loaded shard {}.", shard.id());
+        println!("Loaded key shard {}.", shard.id());
         quorum.push_shard(shard);
 
         if idx + 1
             >= quorum
                 .quorum_size()
-                .expect("quorum_size should be set after adding a shard")
+                .expect("quorum_size should be set after adding a key shard")
         {
             break;
         }
@@ -271,7 +296,7 @@ fn expand(matches: &ArgMatches) -> Result<(), Error> {
 
     let new_shards = quorum
         .extend_shards(num_new_shards)
-        .context("minting new shards")?
+        .context("minting new key shards")?
         .iter()
         .map(|s| (s.document_id(), s.id(), s.encrypt().unwrap()))
         .collect::<Vec<_>>();
@@ -299,17 +324,20 @@ fn reprint(matches: &ArgMatches) -> Result<(), Error> {
     let mut main_document: MainDocument;
     let mut shard_pair: (EncryptedKeyShard, KeyShardCodewords);
     let (pdf, path_basename): (&mut dyn ToPdf, String) = if matches.is_present("main-document") {
-        main_document = read_multibase_qr("Main Document")?;
+        main_document = read_multibase_qr("Enter a main document code")?;
         // TODO: Ask the user to input the checksum...
-        println!("Document Checksum: {}", main_document.checksum_string());
+        println!(
+            "Main document checksum: {}",
+            main_document.checksum_string()
+        );
 
         let pathname = format!("main-document-{}.pdf", main_document.id());
         (&mut main_document, pathname)
     } else if matches.is_present("shard") {
-        let encrypted_shard: EncryptedKeyShard = read_multibase("Key Shard")?;
+        let encrypted_shard: EncryptedKeyShard = read_multibase("Enter key shard")?;
         // TODO: Ask the user to input the checksum...
-        println!("Shard Checksum: {}", encrypted_shard.checksum_string());
-        let codewords = read_codewords("Shard Codewords")?;
+        println!("Key shard checksum: {}", encrypted_shard.checksum_string());
+        let codewords = read_codewords("Key shard codewords")?;
 
         let shard = encrypted_shard
             .decrypt(codewords.clone())

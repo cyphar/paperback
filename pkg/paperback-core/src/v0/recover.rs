@@ -81,16 +81,6 @@ impl From<KeyShard> for Type {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct Grouping(pub Vec<Vec<Type>>);
-
-#[derive(Debug, Clone, Default)]
-pub struct UntrustedQuorum {
-    untrusted_quorum_size: Option<u32>,
-    untrusted_main_document: Option<MainDocument>,
-    untrusted_shards: Vec<KeyShard>,
-}
-
 #[derive(Debug, Clone, Eq)]
 struct HashablePublicKey(PublicKey);
 
@@ -113,6 +103,60 @@ impl Hash for HashablePublicKey {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.0.as_bytes().hash(state);
     }
+}
+
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+struct GroupId {
+    // All documents must agree on the paperback version. This could be
+    // faked by an attacker but this is just a sanity-check.
+    version: u32,
+    // All documents must agree on the document checksum.
+    doc_chksum: Multihash,
+    // All documents must agree on quorum size.
+    quorum_size: u32,
+    // All documents must use the same public key for their identity.
+    id_public_key: HashablePublicKey,
+}
+
+impl From<&MainDocument> for GroupId {
+    fn from(main: &MainDocument) -> Self {
+        Self {
+            version: main.inner.meta.version,
+            doc_chksum: main.checksum(),
+            quorum_size: main.quorum_size(),
+            id_public_key: HashablePublicKey(main.identity.id_public_key),
+        }
+    }
+}
+
+impl From<&KeyShard> for GroupId {
+    fn from(shard: &KeyShard) -> Self {
+        Self {
+            version: shard.inner.version,
+            doc_chksum: shard.document_checksum(),
+            quorum_size: shard.quorum_size(),
+            id_public_key: HashablePublicKey(shard.identity.id_public_key),
+        }
+    }
+}
+
+impl From<&Type> for GroupId {
+    fn from(document: &Type) -> Self {
+        match document {
+            Type::MainDocument(main) | Type::ForgedMainDocument(main) => Self::from(main),
+            Type::KeyShard(shard) | Type::ForgedKeyShard(shard) => Self::from(shard),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Grouping(pub Vec<Vec<Type>>);
+
+#[derive(Debug, Clone, Default)]
+pub struct UntrustedQuorum {
+    untrusted_quorum_size: Option<u32>,
+    untrusted_main_document: Option<MainDocument>,
+    untrusted_shards: HashMap<(GroupId, String), KeyShard>,
 }
 
 #[derive(Debug)]
@@ -139,7 +183,8 @@ impl UntrustedQuorum {
     pub fn push_shard(&mut self, shard: KeyShard) -> &mut Self {
         self.untrusted_quorum_size
             .get_or_insert(shard.quorum_size());
-        self.untrusted_shards.push(shard);
+        self.untrusted_shards
+            .insert((GroupId::from(&shard), shard.id()), shard);
         self
     }
 
@@ -149,46 +194,27 @@ impl UntrustedQuorum {
         self
     }
 
+    pub fn untrusted_shards(&self) -> impl Iterator<Item = &KeyShard> {
+        self.untrusted_shards.values()
+    }
+
+    pub fn num_untrusted_shards(&self) -> usize {
+        self.untrusted_shards.len()
+    }
+
     fn group(&self) -> Vec<Vec<Type>> {
         let documents = self
             .untrusted_main_document
             .iter()
             .cloned()
             .map(Type::from)
-            .chain(self.untrusted_shards.iter().cloned().map(Type::from))
+            .chain(self.untrusted_shards.values().cloned().map(Type::from))
             .collect::<Vec<_>>();
-
-        #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-        struct GroupId {
-            // All documents must agree on the paperback version. This could be
-            // faked by an attacker but this is just a sanity-check.
-            version: u32,
-            // All documents must agree on the document checksum.
-            doc_chksum: Multihash,
-            // All documents must agree on quorum size.
-            quorum_size: u32,
-            // All documents must use the same public key for their identity.
-            id_public_key: HashablePublicKey,
-        }
 
         let mut groups: HashMap<GroupId, Vec<Type>> = HashMap::new();
         for document in documents {
-            let group_id = match &document {
-                Type::MainDocument(main) | Type::ForgedMainDocument(main) => GroupId {
-                    version: main.inner.meta.version,
-                    doc_chksum: main.checksum(),
-                    quorum_size: main.quorum_size(),
-                    id_public_key: HashablePublicKey(main.identity.id_public_key),
-                },
-                Type::KeyShard(shard) | Type::ForgedKeyShard(shard) => GroupId {
-                    version: shard.inner.version,
-                    doc_chksum: shard.document_checksum(),
-                    quorum_size: shard.quorum_size(),
-                    id_public_key: HashablePublicKey(shard.identity.id_public_key),
-                },
-            };
             groups
-                .entry(group_id)
+                .entry(GroupId::from(&document))
                 .or_insert_with(Vec::new)
                 .push(document);
         }
