@@ -37,6 +37,7 @@ itertools = "^0.10"
 multibase = "^0.9"
 multihash = "^0.15"
 nom = "^7" # This must match the unsigned-varint version.
+once_cell = "^1.9"
 rand = "^0.7" # This must match the ed25519-dalek version.
 printpdf = { version = "^0.5", features = ["svg"] }
 qrcode = "^0.12"

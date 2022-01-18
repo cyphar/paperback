@@ -111,9 +111,29 @@ The general usage of paperback is:
    key shards need to be scanned (along with a list of the key shards already
    scanned).
 
- * Expand a quorum using `paperback expand -n SHARDS --interactive`. The `-n`
-   shards number is the number of new shards to be created. You will be asked
-   to input enough key shards to form a quorum.
+ * Expand a quorum using `paperback expand-shards -n SHARDS --interactive`. The
+   `-n` shards number is the number of new shards to be created. You will be
+   asked to input enough key shards to form a quorum.
+
+   Paperback will tell you how many remaining key shards need to be scanned
+   (along with a list of the key shards already scanned).
+
+   The new key shards will be saved as PDF files in the same way as with
+   `paperback backup`.
+
+ * Re-generate key shards with a specific idenitifier using `paperback
+   recreate-shards --interactive SHARD_ID...`. You can specify as many shard
+   ids as you like. Shard ids are of the form "haaaaaaa" ("h" followed by 7
+   alphanumeric characters). You can specify any arbitrary shard id.
+
+   This operation is mostly intended for allowing a shard holder to recover
+   their key shard (which may have been lost). Using `recreate-shards` is
+   preferable because (assuming you're sure the ID you recreate is the ID of
+   the shard you originally gave them) it means that they cannot trick you into
+   getting new distinct shards by pretending to lose and old shard. The
+   recreated shards are identical in almost every respect to the old shards
+   (except with a new set of codewords) so having many copies gives you no more
+   information than just one.
 
    Paperback will tell you how many remaining key shards need to be scanned
    (along with a list of the key shards already scanned).

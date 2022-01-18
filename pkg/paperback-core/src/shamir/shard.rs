@@ -18,7 +18,7 @@
 
 use crate::{
     shamir::gf::{GfElem, GfElemPrimitive},
-    v0::{FromWire, ToWire},
+    v0::{FromWire, ShardId, ToWire},
 };
 
 use unsigned_varint::{encode as varuint_encode, nom as varuint_nom};
@@ -41,7 +41,7 @@ impl Shard {
     ///
     /// If two shards have the same identifier, they cannot be used together for
     /// secret recovery.
-    pub fn id(&self) -> String {
+    pub fn id(&self) -> ShardId {
         multibase::encode(multibase::Base::Base32Z, &self.x.to_bytes())
     }
 
@@ -50,6 +50,11 @@ impl Shard {
     pub fn threshold(&self) -> u32 {
         self.threshold
     }
+}
+
+pub fn parse_id(id: ShardId) -> Result<GfElem, multibase::Error> {
+    let (_, data) = multibase::decode(id)?;
+    Ok(GfElem::from_bytes(data))
 }
 
 impl ToWire for Shard {

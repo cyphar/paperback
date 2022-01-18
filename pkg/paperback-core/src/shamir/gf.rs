@@ -587,6 +587,23 @@ pub struct GfBarycentric {
 
 impl EvaluablePolynomial for GfBarycentric {
     fn evaluate(&self, x: GfElem) -> GfElem {
+        // The following calculations will divide by zero if the requested x is
+        // one of the x values used for interpolation. So check if it already
+        // exists and return the corresponding y if that is the case.
+        //
+        // In Shamir, this means that someone is trying to reconstruct a shard
+        // which is present in the quorum.
+        // XXX: We could possibly do this as part of the sum_terms loop?
+        if let Some((_, &y)) = self
+            .xs
+            .iter()
+            .zip(&self.ys)
+            .filter(|&(&xi, _)| xi == x)
+            .next()
+        {
+            return y;
+        }
+
         // We use the second form of the barycentric interpolation formula so we
         // don't need to evaluate l(x) = (x-x_0)...(x-x_k) at all. This means we
         // just need to evaluate:

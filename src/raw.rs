@@ -201,7 +201,7 @@ fn raw_restore(matches: &ArgMatches) -> Result<(), Error> {
 }
 
 fn raw_expand(matches: &ArgMatches) -> Result<(), Error> {
-    use paperback::{EncryptedKeyShard, FromWire, ToWire, UntrustedQuorum};
+    use paperback::{EncryptedKeyShard, FromWire, NewShardKind, ToWire, UntrustedQuorum};
 
     let shard_paths = matches
         .values_of("shards")
@@ -245,12 +245,15 @@ fn raw_expand(matches: &ArgMatches) -> Result<(), Error> {
         )
     })?;
 
-    let new_shards = quorum
-        .extend_shards(num_new_shards)
-        .context("minting new shards")?
-        .iter()
-        .map(|s| s.encrypt().unwrap())
-        .collect::<Vec<_>>();
+    let new_shards = (0..num_new_shards)
+        .map(|_| {
+            Ok(quorum
+                .new_shard(NewShardKind::NewShard)
+                .context("minting new shards")?
+                .encrypt()
+                .expect("encrypt new shard"))
+        })
+        .collect::<Result<Vec<_>, Error>>()?;
 
     for (i, (shard, keyword)) in new_shards.iter().enumerate() {
         let decrypted_shard = shard.clone().decrypt(keyword).unwrap();

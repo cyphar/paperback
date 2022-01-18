@@ -33,7 +33,7 @@ use paperback_core::latest as paperback;
 
 use paperback::{
     pdf::qr, wire, Backup, EncryptedKeyShard, FromWire, KeyShard, KeyShardCodewords, MainDocument,
-    ToPdf, UntrustedQuorum,
+    NewShardKind, ShardId, ToPdf, UntrustedQuorum,
 };
 
 fn backup(matches: &ArgMatches) -> Result<(), Error> {
@@ -43,7 +43,7 @@ fn backup(matches: &ArgMatches) -> Result<(), Error> {
         .parse()
         .context("--sealed argument was not a boolean")?;
     let quorum_size: u32 = matches
-        .value_of("quorum_size")
+        .value_of("quorum-size")
         .expect("required --quorum_size argument not given")
         .parse()
         .context("--quorum-size argument was not an unsigned integer")?;
@@ -226,15 +226,12 @@ fn recover(matches: &ArgMatches) -> Result<(), Error> {
     Ok(())
 }
 
-fn expand(matches: &ArgMatches) -> Result<(), Error> {
-    let interactive: bool = matches.is_present("interactive");
-    ensure!(interactive, "PDF scanning not yet implemented");
-    let num_new_shards: u32 = matches
-        .value_of("new_shards")
-        .expect("required --new-shards argument not given")
-        .parse()
-        .context("--new-shards argument was not an unsigned integer")?;
+enum ShardCreate {
+    ExpandShards(u32),
+    RecreateShards(Vec<ShardId>),
+}
 
+fn new_shards(create: ShardCreate) -> Result<(), Error> {
     let mut quorum = UntrustedQuorum::new();
     loop {
         let idx = quorum.num_untrusted_shards() as u32;
@@ -286,12 +283,25 @@ fn expand(matches: &ArgMatches) -> Result<(), Error> {
         )
     })?;
 
-    let new_shards = quorum
-        .extend_shards(num_new_shards)
-        .context("minting new key shards")?
-        .iter()
-        .map(|s| (s.document_id(), s.id(), s.encrypt().unwrap()))
-        .collect::<Vec<_>>();
+    let new_shards = match create {
+        ShardCreate::ExpandShards(num_new_shards) => (0..num_new_shards)
+            .map(|_| NewShardKind::NewShard)
+            .collect::<Vec<_>>(),
+        ShardCreate::RecreateShards(ids) => ids
+            .into_iter()
+            .map(NewShardKind::ExistingShard)
+            .collect::<Vec<_>>(),
+    }
+    .into_iter()
+    .map(|new| {
+        let s = quorum.new_shard(new).context("minting new key shards")?;
+        Ok((
+            s.document_id(),
+            s.id(),
+            s.encrypt().expect("encrypt new shard"),
+        ))
+    })
+    .collect::<Result<Vec<_>, Error>>()?;
 
     for (document_id, shard_id, (shard, codewords)) in new_shards {
         (shard, codewords)
@@ -303,6 +313,24 @@ fn expand(matches: &ArgMatches) -> Result<(), Error> {
     }
 
     Ok(())
+}
+
+fn expand_shards(matches: &ArgMatches) -> Result<(), Error> {
+    let num_new_shards: u32 = matches
+        .value_of("new-shards")
+        .expect("required --new-shards argument not given")
+        .parse()
+        .context("--new-shards argument was not an unsigned integer")?;
+    new_shards(ShardCreate::ExpandShards(num_new_shards))
+}
+
+fn recreate_shards(matches: &ArgMatches) -> Result<(), Error> {
+    let ids = matches
+        .values_of("shard-ids")
+        .expect("required shard id arguments not given")
+        .map(String::from)
+        .collect::<Vec<_>>();
+    new_shards(ShardCreate::RecreateShards(ids))
 }
 
 fn reprint(matches: &ArgMatches) -> Result<(), Error> {
@@ -359,7 +387,7 @@ fn main() -> Result<(), Box<dyn StdError>> {
                 .help("Create a sealed backup, which cannot be expanded (have new shards be created) after creation.")
                 .possible_values(&["true", "false"])
                 .default_value("false"))
-            .arg(Arg::new("quorum_size")
+            .arg(Arg::new("quorum-size")
                 .short('n')
                 .long("quorum-size")
                 .value_name("QUORUM SIZE")
@@ -391,20 +419,34 @@ fn main() -> Result<(), Box<dyn StdError>> {
                 .allow_hyphen_values(true)
                 .required(true)
                 .index(1)))
-        // paperback-cli expand --interactive -n <SHARDS>
-        .subcommand(App::new("expand")
-            .about(r#"Create new key shards from a quorum of old key shards."#)
+        // paperback-cli expand-shards --interactive -n <SHARDS>
+        .subcommand(App::new("expand-shards")
+            .about(r#"Create new key shards from a quorum of old key shards. The new key shards are separate to existing key shards, which means you are increasing the number of shards in circulation. This operation is recommended when you wish to add a new key shard holder to an existing quorum (and you are still confident that no more than N-1 shard holders will conspire against you)."#)
             .arg(Arg::new("interactive")
                 .long("interactive")
                 .help(r#"Ask for data stored in QR codes interactively rather than scanning images."#)
                 // TODO: Make this optional.
                 .required(true))
-            .arg(Arg::new("new_shards")
+            .arg(Arg::new("new-shards")
                 .short('n')
                 .long("new-shards")
                 .value_name("NUM SHARDS")
                 .help(r#"Number of new shards to create."#)
                 .takes_value(true)
+                .required(true)))
+        // paperback-cli recreate-shards --interactive <SHARD-ID>...
+        .subcommand(App::new("recreate-shards")
+            .about(r#"Re-create key shards with a given identifier from a quorum of old key shards. The re-created key shards are identical to the original versions of said key shards. This operation is recommended when one of the key shard holders lose their key shard and need a replacement (this ensures that they cannot fool you into getting an distinct new shard in addition to the original)."#)
+            .arg(Arg::new("interactive")
+                .long("interactive")
+                .help(r#"Ask for data stored in QR codes interactively rather than scanning images."#)
+                // TODO: Make this optional.
+                .required(true))
+            .arg(Arg::new("shard-ids")
+                .value_name("SHARD ID")
+                .help(r#"Shard identifier(s) of the shard(s) to recreate."#)
+                .takes_value(true)
+                .multiple_values(true)
                 .required(true)))
         // paperback-cli reprint --interactive [--main-document|--shard]
         .subcommand(App::new("reprint")
@@ -429,7 +471,8 @@ fn main() -> Result<(), Box<dyn StdError>> {
         Some(("raw", sub_matches)) => raw::submatch(&mut app, sub_matches),
         Some(("backup", sub_matches)) => backup(sub_matches),
         Some(("recover", sub_matches)) => recover(sub_matches),
-        Some(("expand", sub_matches)) => expand(sub_matches),
+        Some(("expand-shards", sub_matches)) => expand_shards(sub_matches),
+        Some(("recreate-shards", sub_matches)) => recreate_shards(sub_matches),
         Some(("reprint", sub_matches)) => reprint(sub_matches),
         Some((subcommand, _)) => {
             // We should never end up here.

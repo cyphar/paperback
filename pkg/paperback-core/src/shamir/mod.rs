@@ -18,7 +18,7 @@
 
 mod dealer;
 mod gf;
-mod shard;
+pub(crate) mod shard;
 
 pub use dealer::{recover_secret, Dealer};
 pub use shard::Shard;

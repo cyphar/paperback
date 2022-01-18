@@ -17,8 +17,8 @@
  */
 
 use crate::{
-    shamir::{self, Dealer},
-    v0::{Error, FromWire, KeyShard, KeyShardBuilder, MainDocument, ShardSecret},
+    shamir::{self, shard, Dealer},
+    v0::{Error, FromWire, KeyShard, KeyShardBuilder, MainDocument, ShardId, ShardSecret},
 };
 
 use std::{
@@ -30,6 +30,7 @@ use aead::{Aead, NewAead, Payload};
 use chacha20poly1305::ChaCha20Poly1305;
 use ed25519_dalek::{Keypair, PublicKey};
 use multihash::Multihash;
+use once_cell::unsync::OnceCell;
 
 #[derive(Debug, Clone)]
 pub enum Type {
@@ -352,8 +353,17 @@ impl UntrustedQuorum {
             version,
             id_public_key,
             doc_chksum,
+            dealer: OnceCell::new(),
         })
     }
+}
+
+/// The kind of shard expansion being requested in `Quorum::new_shard`.
+pub enum NewShardKind {
+    /// Create a new shard with a random `ShardId` (x-value).
+    NewShard,
+    /// Re-create the shard with the provided `ShardId`.
+    ExistingShard(ShardId),
 }
 
 #[derive(Debug, Clone)]
@@ -364,11 +374,24 @@ pub struct Quorum {
     version: u32,
     id_public_key: PublicKey,
     doc_chksum: Multihash,
+    // Lazy-initialised dealer, reconstructed from key shards.
+    dealer: OnceCell<Dealer>,
 }
 
 impl Quorum {
     pub fn has_main_document(&self) -> bool {
         self.main_document.is_some()
+    }
+
+    fn get_dealer(&self) -> Result<&Dealer, Error> {
+        Ok(self.dealer.get_or_try_init(|| {
+            Dealer::recover(
+                self.shards
+                    .iter()
+                    .map(|s| s.inner.shard.clone())
+                    .collect::<Vec<_>>(),
+            )
+        })?)
     }
 
     pub fn recover_document(&self) -> Result<Vec<u8>, Error> {
@@ -403,16 +426,9 @@ impl Quorum {
             .map_err(Error::AeadDecryption)
     }
 
-    pub fn extend_shards(&self, n: u32) -> Result<Vec<KeyShard>, Error> {
-        let shards = self
-            .shards
-            .iter()
-            .map(|s| s.inner.shard.clone())
-            .collect::<Vec<_>>();
-
+    pub fn new_shard(&self, shard_type: NewShardKind) -> Result<KeyShard, Error> {
         // Conduct a complete recovery.
-        // TODO: Cache Dealer::recover.
-        let dealer = Dealer::recover(shards)?;
+        let dealer = self.get_dealer()?;
         let secret = ShardSecret::from_wire(dealer.secret()).map_err(Error::ShardSecretDecode)?;
 
         // Get the private key so we can sign the new shards.
@@ -435,15 +451,20 @@ impl Quorum {
         };
 
         // Extend new shards.
-        Ok((0..n)
-            .map(|_| {
-                KeyShardBuilder {
-                    version: self.version,
-                    doc_chksum: self.doc_chksum,
-                    shard: dealer.next_shard(),
-                }
-                .sign(&id_keypair)
-            })
-            .collect::<Vec<_>>())
+        Ok(KeyShardBuilder {
+            version: self.version,
+            doc_chksum: self.doc_chksum,
+            shard: match shard_type {
+                NewShardKind::NewShard => dealer.next_shard(),
+                NewShardKind::ExistingShard(id) => dealer
+                    .shard(shard::parse_id(id).map_err(Error::ShardIdDecode)?)
+                    .ok_or_else(|| {
+                        Error::Other(
+                            "requested shard id has x value of 0 -- refusing to create".to_string(),
+                        )
+                    })?,
+            },
+        }
+        .sign(&id_keypair))
     }
 }

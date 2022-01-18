@@ -72,6 +72,9 @@ pub enum Error {
     #[error("failed to decode shard secret: {0}")]
     ShardSecretDecode(String),
 
+    #[error("failed to decode shard id: {0}")]
+    ShardIdDecode(multibase::Error),
+
     #[error("bip39 phrase failure: {0}")]
     Bip39(bip39::ErrorKind),
 
@@ -500,7 +503,7 @@ mod test {
 
         // Construct a quorum *without the main_document*.
         let mut quorum = UntrustedQuorum::new();
-        for (shard, codewords) in shards.iter() {
+        for (shard, codewords) in &shards {
             let shard = shard.decrypt(codewords).unwrap();
             quorum.push_shard(shard.clone());
         }
@@ -510,10 +513,8 @@ mod test {
         let _ = quorum.recover_document().unwrap_err();
 
         // But we can expand it -- take the shards through a round-trip.
-        let new_shards = quorum
-            .extend_shards(quorum_size.into())
-            .unwrap()
-            .iter()
+        let new_shards = (0..quorum_size)
+            .map(|_| quorum.new_shard(NewShardKind::NewShard).unwrap())
             .map(|s| s.encrypt().unwrap())
             .map(|(shard, codewords)| {
                 let zbase32_bytes = shard.to_wire_multibase(Base::Base32Z);
@@ -521,6 +522,9 @@ mod test {
                 (shard, codewords.clone())
             })
             .collect::<Vec<_>>();
+        // TODO: Consider re-building the original shards, but this increases
+        //       the cost of this test to the point where
+        //       paperback_expand_smoke_201 takes >2 minutes.
         std::mem::drop(quorum); // make sure it's gone
 
         // Construct a new quorum with the expanded keys!
@@ -640,6 +644,63 @@ mod test {
         let (enc_shard, codewords) = shard.clone().encrypt().unwrap();
         let shard2 = enc_shard.decrypt(&codewords).unwrap();
         assert_eq!(shard, shard2);
+    }
+
+    #[quickcheck]
+    fn paperback_recreate_shards(quorum_size: u8) -> TestResult {
+        #[cfg(debug_assertions)] // not --release
+        const RECREATE_UPPER: u8 = 32;
+        #[cfg(not(debug_assertions))] // --release
+        const RECREATE_UPPER: u8 = 180;
+
+        if quorum_size < 1 || quorum_size > RECREATE_UPPER {
+            return TestResult::discard();
+        }
+
+        let mut secret = [0; 1024];
+        rand::thread_rng().fill_bytes(&mut secret[..]);
+
+        // Construct a backup.
+        let backup = Backup::new(quorum_size.into(), secret.as_ref()).unwrap();
+        let shards = (0..quorum_size as usize + 1)
+            .map(|_| backup.next_shard().unwrap())
+            .map(|s| s.encrypt().unwrap())
+            .collect::<Vec<_>>();
+
+        // Go through a round-trip through serialisation then decrypt the shards.
+        let shards = shards
+            .iter()
+            .map(|(shard, codewords)| {
+                let zbase32_bytes = shard.to_wire_multibase(Base::Base32Z);
+                let shard = EncryptedKeyShard::from_wire_multibase(zbase32_bytes).unwrap();
+                shard.decrypt(codewords).unwrap()
+            })
+            .collect::<Vec<_>>();
+
+        // Construct a quorum *without the main_document*.
+        let mut quorum = UntrustedQuorum::new();
+        for shard in &shards[..quorum_size as usize] {
+            quorum.push_shard(shard.clone());
+        }
+        let quorum = quorum.validate().unwrap();
+
+        // Secret recovery should fail.
+        let _ = quorum.recover_document().unwrap_err();
+
+        // However we should be able to recover all of the shards correctly.
+        TestResult::from_bool(
+            shards
+                .iter()
+                .map(|s| {
+                    (
+                        s.clone(),
+                        quorum
+                            .new_shard(NewShardKind::ExistingShard(s.id()))
+                            .unwrap(),
+                    )
+                })
+                .all(|(s, snew)| s == snew),
+        )
     }
 
     // TODO: Add many more tests...

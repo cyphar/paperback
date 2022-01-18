@@ -92,7 +92,7 @@ impl Dealer {
     }
 
     /// Generate a `Shard` for the secret using the given `x` value.
-    fn shard(&self, x: GfElem) -> Option<Shard> {
+    pub fn shard(&self, x: GfElem) -> Option<Shard> {
         if x == GfElem::ZERO {
             return None;
         }
