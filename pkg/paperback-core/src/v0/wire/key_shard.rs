@@ -172,20 +172,20 @@ mod test {
     use super::*;
 
     #[quickcheck]
-    fn key_shard_builder_roundtrip(inner: KeyShardBuilder) {
+    fn key_shard_builder_roundtrip(inner: KeyShardBuilder) -> bool {
         let inner2 = KeyShardBuilder::from_wire(inner.to_wire()).unwrap();
-        assert_eq!(inner, inner2);
+        inner == inner2
     }
 
     #[quickcheck]
-    fn key_shard_roundtrip(shard: KeyShard) {
+    fn key_shard_roundtrip(shard: KeyShard) -> bool {
         let shard2 = KeyShard::from_wire(shard.to_wire()).unwrap();
-        assert_eq!(shard, shard2);
+        shard == shard2
     }
 
     #[quickcheck]
-    fn encrypted_key_shard_roundtrip(shard: EncryptedKeyShard) {
+    fn encrypted_key_shard_roundtrip(shard: EncryptedKeyShard) -> bool {
         let shard2 = EncryptedKeyShard::from_wire(shard.to_wire()).unwrap();
-        assert_eq!(shard, shard2);
+        shard == shard2
     }
 }

@@ -640,10 +640,10 @@ mod test {
     paperback_expand_test!(paperback_expand_smoke_201, 201);
 
     #[quickcheck]
-    fn key_shard_encryption_roundtrip(shard: KeyShard) {
+    fn key_shard_encryption_roundtrip(shard: KeyShard) -> bool {
         let (enc_shard, codewords) = shard.clone().encrypt().unwrap();
         let shard2 = enc_shard.decrypt(&codewords).unwrap();
-        assert_eq!(shard, shard2);
+        shard == shard2
     }
 
     #[quickcheck]
@@ -657,12 +657,12 @@ mod test {
             return TestResult::discard();
         }
 
-        let mut secret = [0; 1024];
+        let mut secret = [0; 16];
         rand::thread_rng().fill_bytes(&mut secret[..]);
 
         // Construct a backup.
         let backup = Backup::new(quorum_size.into(), secret.as_ref()).unwrap();
-        let shards = (0..quorum_size as usize + 1)
+        let shards = (0..quorum_size as usize + 8)
             .map(|_| backup.next_shard().unwrap())
             .map(|s| s.encrypt().unwrap())
             .collect::<Vec<_>>();
@@ -688,18 +688,35 @@ mod test {
         let _ = quorum.recover_document().unwrap_err();
 
         // However we should be able to recover all of the shards correctly.
+        if !shards.iter().all(|s| {
+            s.clone()
+                == quorum
+                    .new_shard(NewShardKind::ExistingShard(s.id()))
+                    .unwrap()
+        }) {
+            return TestResult::failed();
+        }
+
+        // Make a second quorum and make sure we can consistently recover a
+        // never-before-seen shard with an arbitrary id.
+        let mut quorum2 = UntrustedQuorum::new();
+        for shard in &shards[..quorum_size as usize] {
+            quorum2.push_shard(shard.clone());
+        }
+        let quorum2 = quorum2.validate().unwrap();
+
+        let new_shard_id = "hayyayyy";
+        let new_shard = quorum
+            .new_shard(NewShardKind::ExistingShard(new_shard_id.to_string()))
+            .unwrap();
+        let new_shard2 = quorum2
+            .new_shard(NewShardKind::ExistingShard(new_shard_id.to_string()))
+            .unwrap();
+
         TestResult::from_bool(
-            shards
-                .iter()
-                .map(|s| {
-                    (
-                        s.clone(),
-                        quorum
-                            .new_shard(NewShardKind::ExistingShard(s.id()))
-                            .unwrap(),
-                    )
-                })
-                .all(|(s, snew)| s == snew),
+            new_shard == new_shard2
+                && new_shard.id() == new_shard_id
+                && new_shard2.id() == new_shard_id,
         )
     }
 

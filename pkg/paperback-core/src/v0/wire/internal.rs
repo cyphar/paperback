@@ -168,11 +168,11 @@ mod test {
     }
 
     #[quickcheck]
-    fn identity_roundtrip(_: u32) {
+    fn identity_roundtrip(data: Vec<u8>) -> bool {
         let id_keypair = Keypair::generate(&mut OsRng);
 
         let id_public_key = id_keypair.public.clone();
-        let id_signature = id_keypair.sign("foobar".as_bytes());
+        let id_signature = id_keypair.sign(&data);
 
         let identity = Identity {
             id_public_key,
@@ -180,11 +180,11 @@ mod test {
         };
         let identity2 = Identity::from_wire(identity.to_wire()).unwrap();
 
-        assert_eq!(identity, identity2);
+        identity == identity2
     }
 
     #[quickcheck]
-    fn shard_secret_roundtrip(_: u32, sealed: bool) {
+    fn shard_secret_roundtrip(_: u32, sealed: bool) -> bool {
         let mut doc_key = ChaChaPolyKey::default();
         OsRng.fill_bytes(&mut doc_key);
 
@@ -197,6 +197,6 @@ mod test {
         };
         let secret2 = ShardSecret::from_wire(secret.to_wire()).unwrap();
 
-        assert_eq!(secret, secret2)
+        secret == secret2
     }
 }

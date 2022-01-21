@@ -159,14 +159,11 @@ mod test {
     use super::*;
 
     #[quickcheck]
-    fn main_document_roundtrip(main: MainDocument) {
+    fn main_document_roundtrip(main: MainDocument) -> bool {
         let main2 = MainDocument::from_wire(main.to_wire()).unwrap();
-        assert_eq!(main, main2);
-
         let inner2 = MainDocumentBuilder::from_wire(main.inner.to_wire()).unwrap();
-        assert_eq!(main.inner, inner2);
-
         let meta2 = MainDocumentMeta::from_wire(main.inner.meta.to_wire()).unwrap();
-        assert_eq!(main.inner.meta, meta2);
+
+        main == main2 && main.inner == inner2 && main.inner.meta == meta2
     }
 }

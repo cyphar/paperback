@@ -143,8 +143,8 @@ mod test {
     use super::*;
 
     #[quickcheck]
-    fn shard_bytes_roundtrip(shard: Shard) {
+    fn shard_bytes_roundtrip(shard: Shard) -> bool {
         let shard2 = Shard::from_wire(&shard.to_wire()).unwrap();
-        assert_eq!(shard, shard2);
+        shard == shard2
     }
 }
