@@ -97,9 +97,10 @@ The general usage of paperback is:
    shards will be saved in the current directory with names resembling
    `key_shard-xxxxxxxx-hyyyyyyy.pdf` (with `hyyyyyyy` being the shard ID).
 
- * Recover a backup using `paperback recover --interactive`. You will be asked
-   to input the main document data, followed by the the shard data and
-   codewords.
+ * Recover a backup using `paperback recover --interactive OUTPUT_FILE`. You
+   will be asked to input the main document data, followed by the the shard
+   data and codewords. The output file is the path to where the secret data
+   will be output (or `-` to write to stdout).
 
    Note that for key shards, the QR code data will be encoded differently to
    the "text fallback". This is because it is more space efficient to store the
