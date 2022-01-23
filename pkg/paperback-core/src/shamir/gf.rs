@@ -594,13 +594,7 @@ impl EvaluablePolynomial for GfBarycentric {
         // In Shamir, this means that someone is trying to reconstruct a shard
         // which is present in the quorum.
         // XXX: We could possibly do this as part of the sum_terms loop?
-        if let Some((_, &y)) = self
-            .xs
-            .iter()
-            .zip(&self.ys)
-            .filter(|&(&xi, _)| xi == x)
-            .next()
-        {
+        if let Some((_, &y)) = self.xs.iter().zip(&self.ys).find(|&(&xi, _)| xi == x) {
             return y;
         }
 

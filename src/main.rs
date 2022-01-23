@@ -33,7 +33,7 @@ use paperback_core::latest as paperback;
 
 use paperback::{
     pdf::qr, wire, Backup, EncryptedKeyShard, FromWire, KeyShard, KeyShardCodewords, MainDocument,
-    NewShardKind, ShardId, ToPdf, UntrustedQuorum,
+    NewShardKind, ToPdf, UntrustedQuorum,
 };
 
 fn backup(matches: &ArgMatches) -> Result<(), Error> {
@@ -226,12 +226,7 @@ fn recover(matches: &ArgMatches) -> Result<(), Error> {
     Ok(())
 }
 
-enum ShardCreate {
-    ExpandShards(u32),
-    RecreateShards(Vec<ShardId>),
-}
-
-fn new_shards(create: ShardCreate) -> Result<(), Error> {
+fn new_shards(new_shard_types: impl IntoIterator<Item = NewShardKind>) -> Result<(), Error> {
     let mut quorum = UntrustedQuorum::new();
     loop {
         let idx = quorum.num_untrusted_shards() as u32;
@@ -283,25 +278,17 @@ fn new_shards(create: ShardCreate) -> Result<(), Error> {
         )
     })?;
 
-    let new_shards = match create {
-        ShardCreate::ExpandShards(num_new_shards) => (0..num_new_shards)
-            .map(|_| NewShardKind::NewShard)
-            .collect::<Vec<_>>(),
-        ShardCreate::RecreateShards(ids) => ids
-            .into_iter()
-            .map(NewShardKind::ExistingShard)
-            .collect::<Vec<_>>(),
-    }
-    .into_iter()
-    .map(|new| {
-        let s = quorum.new_shard(new).context("minting new key shards")?;
-        Ok((
-            s.document_id(),
-            s.id(),
-            s.encrypt().expect("encrypt new shard"),
-        ))
-    })
-    .collect::<Result<Vec<_>, Error>>()?;
+    let new_shards = new_shard_types
+        .into_iter()
+        .map(|new| {
+            let s = quorum.new_shard(new).context("minting new key shards")?;
+            Ok((
+                s.document_id(),
+                s.id(),
+                s.encrypt().expect("encrypt new shard"),
+            ))
+        })
+        .collect::<Result<Vec<_>, Error>>()?;
 
     for (document_id, shard_id, (shard, codewords)) in new_shards {
         (shard, codewords)
@@ -321,16 +308,16 @@ fn expand_shards(matches: &ArgMatches) -> Result<(), Error> {
         .expect("required --new-shards argument not given")
         .parse()
         .context("--new-shards argument was not an unsigned integer")?;
-    new_shards(ShardCreate::ExpandShards(num_new_shards))
+    new_shards((0..num_new_shards).map(|_| NewShardKind::NewShard))
 }
 
 fn recreate_shards(matches: &ArgMatches) -> Result<(), Error> {
-    let ids = matches
+    let new_shard_list = matches
         .values_of("shard-ids")
         .expect("required shard id arguments not given")
         .map(String::from)
-        .collect::<Vec<_>>();
-    new_shards(ShardCreate::RecreateShards(ids))
+        .map(NewShardKind::ExistingShard);
+    new_shards(new_shard_list)
 }
 
 fn reprint(matches: &ArgMatches) -> Result<(), Error> {
