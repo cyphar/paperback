@@ -16,6 +16,17 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+//! This package implements a Shamir Secret Sharing scheme in GF(2^32), meaning
+//! that the data is split up into 4-byte chunks (and all x and y values are
+//! 32-bit integers).
+//!
+//! ## Security ##
+//! **This implementation is not remotely constant time and has not been
+//! reviewed by any cryptographers. This was implemented by me from scratch
+//! because there was no alternative crate implementing the necessary
+//! algorithms. Of the few SSS crates I found, all had security bugs and none
+//! provided for 32-bit x-values which is a requirement of paperback's design.**
+
 mod dealer;
 mod gf;
 pub(crate) mod shard;
