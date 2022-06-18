@@ -42,14 +42,13 @@ statements about the parties you've given pieces to:
    friend tomorrow.
 
 2. At any time, no party will maliciously collude with more than `k-1` other
-   parties in order to decrypt your backup information (however if you are
+   parties in order to decrypt your backup information (however, if you are
    incapacitated, you could organise with the parties to cooperate only in that
-   instance).  Shamir called this having a group of "mutually suspicious
-   individuals with conflicting interests". Ideally each of the parties will be
+   instance). Shamir called this having a group of "mutually suspicious
+   individuals with conflicting interests". Ideally, each of the parties will be
    unaware of each other (or how many parties there are), and would only come
-   forward based on pre-arranged agreements with you. In practice a person's
-   social graph is quite interconnected, so a higher level of trust is
-   required.
+   forward based on pre-arranged agreements with you. In practice, a person's
+   social graph is quite interconnected, so a higher level of trust is required.
 
 Each party will get a copy of their unique "key shard", and optionally a copy
 of the "master document" (though this is not necessary, and in some situations
@@ -58,11 +57,11 @@ cannot use the "master key" as they do not have the "master document"). We
 recommend laminating all of the relevant documents, and printing them duplex
 (with each page containing the same page on both sides).
 
-Note that this design can be used in a more "centralised" fashion (for instance
-by giving several lawyers from disparate law firms each an individual key
-shard, with the intention to protect against attacks against an individual law
-firm). Paperback doesn't have a strong opinion on who would be good key shard
-holders, that decision is up to you based on your own risk assessment.
+Note that this design can be used in a more "centralised" fashion (for instance,
+by giving several lawyers from disparate law firms each an individual key shard,
+with the intention to protect against attacks against an individual law firm).
+Paperback doesn't have a strong opinion on who would be good key shard holders;
+that decision is up to you based on your own risk assessment.
 
 A full description of the cryptographic design and threat model is provided [in
 the included design document][design].
@@ -93,14 +92,14 @@ The general usage of paperback is:
    path to a file containing your secret data (or `-` to read from stdin).
 
    The main document will be saved in the current directory with the name
-   `main_document-xxxxxxxx.pdf` (`xxxxxxxx` being the document ID) and the key
+   `main_document-xxxxxxxx.pdf` (`xxxxxxxx` being the document ID), and the key
    shards will be saved in the current directory with names resembling
    `key_shard-xxxxxxxx-hyyyyyyy.pdf` (with `hyyyyyyy` being the shard ID).
 
  * Recover a backup using `paperback recover --interactive OUTPUT_FILE`. You
-   will be asked to input the main document data, followed by the the shard
-   data and codewords. The output file is the path to where the secret data
-   will be output (or `-` to write to stdout).
+   will be asked to input the main document data, followed by the shard data and
+   codewords. The output file is the path to where the secret data will be
+   output (or `-` to write to stdout).
 
    Note that for key shards, the QR code data will be encoded differently to
    the "text fallback". This is because it is more space efficient to store the
@@ -122,19 +121,19 @@ The general usage of paperback is:
    The new key shards will be saved as PDF files in the same way as with
    `paperback backup`.
 
- * Re-generate key shards with a specific idenitifier using `paperback
+ * Re-generate key shards with a specific identifier using `paperback
    recreate-shards --interactive SHARD_ID...`. You can specify as many shard
    ids as you like. Shard ids are of the form "haaaaaaa" ("h" followed by 7
    alphanumeric characters). You can specify any arbitrary shard id.
 
    This operation is mostly intended for allowing a shard holder to recover
    their key shard (which may have been lost). Using `recreate-shards` is
-   preferable because (assuming you're sure the ID you recreate is the ID of
-   the shard you originally gave them) it means that they cannot trick you into
-   getting new distinct shards by pretending to lose and old shard. The
-   recreated shards are identical in almost every respect to the old shards
-   (except with a new set of codewords) so having many copies gives you no more
-   information than just one.
+   preferable because (assuming you're sure the ID you recreate is the ID of the
+   shard you originally gave them) it means that they cannot trick you into
+   getting new distinct shards by pretending to lose an old shard. The recreated
+   shards are identical in almost every respect to the old shards (except with a
+   new set of codewords), so having many copies gives you no more information
+   than just one.
 
    Paperback will tell you how many remaining key shards need to be scanned
    (along with a list of the key shards already scanned).
@@ -157,9 +156,9 @@ Note that when inputting data in "interactive mode" you have to put an extra
 blank space to indicate that you've finished inputting the data for that QR
 code. This is to allow you to break the input up over several lines.
 
-Currently paperback only supports "interactive" input. In the future, paperback
-will be able to automatically scan the data from each QR code in an image or
-PDF version of the documents.
+Currently, paperback only supports "interactive" input. In the future, paperback
+will be able to automatically scan the data from each QR code in an image or PDF
+version of the documents.
 
 [rust]: https://www.rust-lang.org/
 [cargo]: https://doc.rust-lang.org/cargo/
@@ -193,10 +192,10 @@ document to be removed). Archival-grade polyester sleeves are more expensive
 than lamination pouches, though they are not generally prohibitively expensive
 (you can find ~AU$1 sleeves online).
 
-The required lifetime of a `paperback` backup is entire up to the user, and so
-making the right price-versus-longevity tradeoff is fairly personal. However,
-if you would like your backups to last indefinitely, I would recommend looking
-at the [National Archives of Australia's website][naa-preserving-paper] which
+The required lifetime of a `paperback` backup is entirely up to the user, and so
+making the right price-versus-longevity tradeoff is fairly personal. However, if
+you would like your backups to last indefinitely, I would recommend looking at
+the [National Archives of Australia's website][naa-preserving-paper] which
 documents in quite some detail what common mistakes are made when trying to
 preserve paper documents.
 
@@ -207,7 +206,7 @@ who are in charge of keeping your backups safe and intact.
 For even more recommendations (from archivists) about how best to produce and
 store paper documents, the Canadian Conservation Institute [has publicly
 provided very detailed explanations of their best practice
-recommendations][cci-notes]. Unfortunately there aren't as many details given
+recommendations][cci-notes]. Unfortunately, there aren't as many details given
 about what a *producer* of a document should do.
 
 [naa-standard]: https://web.archive.org/web/20180304061138/https://www.naa.gov.au/information-management/managing-information-and-records/preserving/physical-records-pres/archival-quality-paper-products.aspx
