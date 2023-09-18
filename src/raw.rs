@@ -30,6 +30,36 @@ use paperback_core::latest as paperback;
 
 const ENCODING_BASE: multibase::Base = multibase::Base::Base32Z;
 
+// paperback-cli raw backup [--sealed] --quorum-size <QUORUM SIZE> --shards <SHARDS> INPUT
+fn raw_backup_cli() -> App<'static> {
+    App::new("backup")
+                .about("Create a new paperback backup.")
+                .arg(Arg::new("sealed")
+                    .long("sealed")
+                    .help("Create a sealed backup, which cannot be expanded (have new shards be created) after creation.")
+                    .possible_values(&["true", "false"])
+                    .default_value("false"))
+                .arg(Arg::new("quorum_size")
+                    .short('n')
+                    .long("quorum-size")
+                    .value_name("QUORUM SIZE")
+                    .help("Number of shards required to recover the document (must not be larger than --shards).")
+                    .takes_value(true)
+                    .required(true))
+                .arg(Arg::new("shards")
+                    .short('k')
+                    .long("shards")
+                    .value_name("NUM SHARDS")
+                    .help("Number of shards to create (must not be smaller than --quorum-size).")
+                    .takes_value(true)
+                    .required(true))
+                .arg(Arg::new("INPUT")
+                    .help(r#"Path to file containing secret data to backup ("-" to read from stdin)."#)
+                    .allow_hyphen_values(true)
+                    .required(true)
+                    .index(1))
+}
+
 fn raw_backup(matches: &ArgMatches) -> Result<(), Error> {
     use paperback::{Backup, ToWire};
 
@@ -122,6 +152,39 @@ fn read_oneline_file(prompt: &str, path_or_stdin: &str) -> Result<String, Error>
         .ok_or_else(|| anyhow!("no lines read"))??)
 }
 
+// paperback-cli raw restore --main-document <MAIN DOCUMENT> (--shards <SHARD>)... OUTPUT
+fn raw_restore_cli() -> App<'static> {
+    App::new("restore")
+        .about("Restore the secret data from a paperback backup.")
+        .arg(
+            Arg::new("main_document")
+                .short('M')
+                .long("main-document")
+                .value_name("MAIN DOCUMENT PATH")
+                .help(r#"Path to paperback main document ("-" to read from stdin)."#)
+                .takes_value(true)
+                .required(true),
+        )
+        .arg(
+            Arg::new("shards")
+                .short('s')
+                .long("shard")
+                .value_name("SHARD PATH")
+                .help(r#"Path to each paperback shard ("-" to read from stdin)."#)
+                .takes_value(true)
+                .multiple_occurrences(true)
+                .number_of_values(1)
+                .required(true),
+        )
+        .arg(
+            Arg::new("OUTPUT")
+                .help(r#"Path to write recovered secret data to ("-" to write to stdout)."#)
+                .allow_hyphen_values(true)
+                .required(true)
+                .index(1),
+        )
+}
+
 fn raw_restore(matches: &ArgMatches) -> Result<(), Error> {
     use paperback::{EncryptedKeyShard, FromWire, MainDocument, UntrustedQuorum};
 
@@ -198,6 +261,32 @@ fn raw_restore(matches: &ArgMatches) -> Result<(), Error> {
         .context("write secret data to file")?;
 
     Ok(())
+}
+
+// paperback-cli raw expand --new-shards <N> (--shards <SHARD>)...
+fn raw_expand_cli() -> App<'static> {
+    App::new("expand")
+        .about("Restore the secret data from a paperback backup.")
+        .arg(
+            Arg::new("new_shards")
+                .short('n')
+                .long("new-shards")
+                .value_name("NUM SHARDS")
+                .help(r#"Number of new shards to create."#)
+                .takes_value(true)
+                .required(true),
+        )
+        .arg(
+            Arg::new("shards")
+                .short('s')
+                .long("shard")
+                .value_name("SHARDS")
+                .help(r#"Path to each paperback shard ("-" to read from stdin)."#)
+                .takes_value(true)
+                .multiple_occurrences(true)
+                .number_of_values(1)
+                .required(true),
+        )
 }
 
 fn raw_expand(matches: &ArgMatches) -> Result<(), Error> {
@@ -285,77 +374,13 @@ pub(crate) fn submatch(app: &mut App<'_>, matches: &ArgMatches) -> Result<(), Er
     }
 }
 
-pub(crate) fn subcommands<'a>() -> App<'a> {
+pub(crate) fn subcommands() -> App<'static> {
     App::new("raw")
             .about("Operate using raw text data, rather than on PDF documents. This mode is not recommended for general use, since it might be more complicated for inexperienced users to recover the document.")
             // paperback-cli raw backup [--sealed] --quorum-size <QUORUM SIZE> --shards <SHARDS> INPUT
-            .subcommand(App::new("backup")
-                .about("Create a new paperback backup.")
-                .arg(Arg::new("sealed")
-                    .long("sealed")
-                    .help("Create a sealed backup, which cannot be expanded (have new shards be created) after creation.")
-                    .possible_values(&["true", "false"])
-                    .default_value("false"))
-                .arg(Arg::new("quorum_size")
-                    .short('n')
-                    .long("quorum-size")
-                    .value_name("QUORUM SIZE")
-                    .help("Number of shards required to recover the document (must not be larger than --shards).")
-                    .takes_value(true)
-                    .required(true))
-                .arg(Arg::new("shards")
-                    .short('k')
-                    .long("shards")
-                    .value_name("NUM SHARDS")
-                    .help("Number of shards to create (must not be smaller than --quorum-size).")
-                    .takes_value(true)
-                    .required(true))
-                .arg(Arg::new("INPUT")
-                    .help(r#"Path to file containing secret data to backup ("-" to read from stdin)."#)
-                    .allow_hyphen_values(true)
-                    .required(true)
-                    .index(1)))
+            .subcommand(raw_backup_cli())
             // paperback-cli raw restore --main-document <MAIN DOCUMENT> (--shards <SHARD>)... OUTPUT
-            .subcommand(App::new("restore")
-                .about("Restore the secret data from a paperback backup.")
-                .arg(Arg::new("main_document")
-                    .short('M')
-                    .long("main-document")
-                    .value_name("MAIN DOCUMENT PATH")
-                    .help(r#"Path to paperback main document ("-" to read from stdin)."#)
-                    .takes_value(true)
-                    .required(true))
-                .arg(Arg::new("shards")
-                    .short('s')
-                    .long("shard")
-                    .value_name("SHARD PATH")
-                    .help(r#"Path to each paperback shard ("-" to read from stdin)."#)
-                    .takes_value(true)
-                    .multiple_occurrences(true)
-                    .number_of_values(1)
-                    .required(true))
-                .arg(Arg::new("OUTPUT")
-                    .help(r#"Path to write recovered secret data to ("-" to write to stdout)."#)
-                    .allow_hyphen_values(true)
-                    .required(true)
-                    .index(1)))
+            .subcommand(raw_restore_cli())
             // paperback-cli raw expand --new-shards <N> (--shards <SHARD>)...
-            .subcommand(App::new("expand")
-                .about("Restore the secret data from a paperback backup.")
-                .arg(Arg::new("new_shards")
-                    .short('n')
-                    .long("new-shards")
-                    .value_name("NUM SHARDS")
-                    .help(r#"Number of new shards to create."#)
-                    .takes_value(true)
-                    .required(true))
-                .arg(Arg::new("shards")
-                    .short('s')
-                    .long("shard")
-                    .value_name("SHARDS")
-                    .help(r#"Path to each paperback shard ("-" to read from stdin)."#)
-                    .takes_value(true)
-                    .multiple_occurrences(true)
-                    .number_of_values(1)
-                    .required(true)))
+            .subcommand(raw_expand_cli())
 }

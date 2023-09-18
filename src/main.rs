@@ -36,6 +36,36 @@ use paperback::{
     NewShardKind, ToPdf, UntrustedQuorum,
 };
 
+// paperback-cli backup [--sealed] -n <QUORUM SIZE> -k <SHARDS> INPUT
+fn backup_cli() -> App<'static> {
+    App::new("backup")
+            .about(r#"Create a paperback backup."#)
+            .arg(Arg::new("sealed")
+                .long("sealed")
+                .help("Create a sealed backup, which cannot be expanded (have new shards be created) after creation.")
+                .possible_values(&["true", "false"])
+                .default_value("false"))
+            .arg(Arg::new("quorum-size")
+                .short('n')
+                .long("quorum-size")
+                .value_name("QUORUM SIZE")
+                .help("Number of shards required to recover the document (must not be larger than --shards).")
+                .takes_value(true)
+                .required(true))
+            .arg(Arg::new("shards")
+                .short('k')
+                .long("shards")
+                .value_name("NUM SHARDS")
+                .help("Number of shards to create (must not be smaller than --quorum-size).")
+                .takes_value(true)
+                .required(true))
+            .arg(Arg::new("INPUT")
+                .help(r#"Path to file containing secret data to backup ("-" to read from stdin)."#)
+                .allow_hyphen_values(true)
+                .required(true)
+                .index(1))
+}
+
 fn backup(matches: &ArgMatches) -> Result<(), Error> {
     let sealed: bool = matches
         .value_of("sealed")
@@ -147,6 +177,26 @@ fn read_multibase_qr<S: AsRef<str>, T: FromWire>(prompt: S) -> Result<T, Error> 
     }
     T::from_wire(joiner.combine_parts()?)
         .map_err(|err| anyhow!("parse inner qr code data: {}", err))
+}
+
+// paperback-cli recover --interactive
+fn recover_cli() -> App<'static> {
+    App::new("recover")
+        .about(r#"Recover a paperback backup."#)
+        .arg(
+            Arg::new("interactive")
+                .long("interactive")
+                .help("Ask for data stored in QR codes interactively rather than scanning images.")
+                // TODO: Make this optional.
+                .required(true),
+        )
+        .arg(
+            Arg::new("OUTPUT")
+                .help(r#"Path to write recovered secret data to ("-" to write to stdout)."#)
+                .allow_hyphen_values(true)
+                .required(true)
+                .index(1),
+        )
 }
 
 fn recover(matches: &ArgMatches) -> Result<(), Error> {
@@ -302,6 +352,24 @@ fn new_shards(new_shard_types: impl IntoIterator<Item = NewShardKind>) -> Result
     Ok(())
 }
 
+// paperback-cli expand-shards --interactive -n <SHARDS>
+fn expand_shards_cli() -> App<'static> {
+    App::new("expand-shards")
+            .about(r#"Create new key shards from a quorum of old key shards. The new key shards are separate to existing key shards, which means you are increasing the number of shards in circulation. This operation is recommended when you wish to add a new key shard holder to an existing quorum (and you are still confident that no more than N-1 shard holders will conspire against you)."#)
+            .arg(Arg::new("interactive")
+                .long("interactive")
+                .help(r#"Ask for data stored in QR codes interactively rather than scanning images."#)
+                // TODO: Make this optional.
+                .required(true))
+            .arg(Arg::new("new-shards")
+                .short('n')
+                .long("new-shards")
+                .value_name("NUM SHARDS")
+                .help(r#"Number of new shards to create."#)
+                .takes_value(true)
+                .required(true))
+}
+
 fn expand_shards(matches: &ArgMatches) -> Result<(), Error> {
     let num_new_shards: u32 = matches
         .value_of("new-shards")
@@ -311,6 +379,23 @@ fn expand_shards(matches: &ArgMatches) -> Result<(), Error> {
     new_shards((0..num_new_shards).map(|_| NewShardKind::NewShard))
 }
 
+// paperback-cli recreate-shards --interactive <SHARD-ID>...
+fn recreate_shards_cli() -> App<'static> {
+    App::new("recreate-shards")
+            .about(r#"Re-create key shards with a given identifier from a quorum of old key shards. The re-created key shards are identical to the original versions of said key shards. This operation is recommended when one of the key shard holders lose their key shard and need a replacement (this ensures that they cannot fool you into getting an distinct new shard in addition to the original)."#)
+            .arg(Arg::new("interactive")
+                .long("interactive")
+                .help(r#"Ask for data stored in QR codes interactively rather than scanning images."#)
+                // TODO: Make this optional.
+                .required(true))
+            .arg(Arg::new("shard-ids")
+                .value_name("SHARD ID")
+                .help(r#"Shard identifier(s) of the shard(s) to recreate."#)
+                .takes_value(true)
+                .multiple_values(true)
+                .required(true))
+}
+
 fn recreate_shards(matches: &ArgMatches) -> Result<(), Error> {
     let new_shard_list = matches
         .values_of("shard-ids")
@@ -318,6 +403,34 @@ fn recreate_shards(matches: &ArgMatches) -> Result<(), Error> {
         .map(String::from)
         .map(NewShardKind::ExistingShard);
     new_shards(new_shard_list)
+}
+
+// paperback-cli reprint --interactive [--main-document|--shard]
+fn reprint_cli() -> App<'static> {
+    App::new("reprint")
+        .about(r#""Re-print" a paperback document by generating a new PDF from an existing PDF."#)
+        .arg(
+            Arg::new("interactive")
+                .long("interactive")
+                .help("Ask for data stored in QR codes interactively rather than scanning images.")
+                // TODO: Make this optional.
+                .required(true),
+        )
+        .arg(
+            Arg::new("main-document")
+                .long("main-document")
+                .help(r#"Reprint a paperback main document."#),
+        )
+        .arg(
+            Arg::new("shard")
+                .long("shard")
+                .help(r#"Reprint a paperback key shard."#),
+        )
+        .group(
+            ArgGroup::new("type")
+                .args(&["main-document", "shard"])
+                .required(true),
+        )
 }
 
 fn reprint(matches: &ArgMatches) -> Result<(), Error> {
@@ -361,98 +474,27 @@ fn reprint(matches: &ArgMatches) -> Result<(), Error> {
     Ok(())
 }
 
-fn main() -> Result<(), Box<dyn StdError>> {
-    let mut app = App::new("paperback-cli")
+fn cli() -> App<'static> {
+    App::new("paperback-cli")
         .version("0.0.0")
         .author("Aleksa Sarai <cyphar@cyphar.com>")
         .about("Operate on a paperback backup using a basic CLI interface.")
         // paperback-cli backup [--sealed] -n <QUORUM SIZE> -k <SHARDS> INPUT
-        .subcommand(App::new("backup")
-            .about(r#"Create a paperback backup."#)
-            .arg(Arg::new("sealed")
-                .long("sealed")
-                .help("Create a sealed backup, which cannot be expanded (have new shards be created) after creation.")
-                .possible_values(&["true", "false"])
-                .default_value("false"))
-            .arg(Arg::new("quorum-size")
-                .short('n')
-                .long("quorum-size")
-                .value_name("QUORUM SIZE")
-                .help("Number of shards required to recover the document (must not be larger than --shards).")
-                .takes_value(true)
-                .required(true))
-            .arg(Arg::new("shards")
-                .short('k')
-                .long("shards")
-                .value_name("NUM SHARDS")
-                .help("Number of shards to create (must not be smaller than --quorum-size).")
-                .takes_value(true)
-                .required(true))
-            .arg(Arg::new("INPUT")
-                .help(r#"Path to file containing secret data to backup ("-" to read from stdin)."#)
-                .allow_hyphen_values(true)
-                .required(true)
-                .index(1)))
+        .subcommand(backup_cli())
         // paperback-cli recover --interactive
-        .subcommand(App::new("recover")
-            .about(r#"Recover a paperback backup."#)
-            .arg(Arg::new("interactive")
-                .long("interactive")
-                .help("Ask for data stored in QR codes interactively rather than scanning images.")
-                // TODO: Make this optional.
-                .required(true))
-            .arg(Arg::new("OUTPUT")
-                .help(r#"Path to write recovered secret data to ("-" to write to stdout)."#)
-                .allow_hyphen_values(true)
-                .required(true)
-                .index(1)))
+        .subcommand(recover_cli())
         // paperback-cli expand-shards --interactive -n <SHARDS>
-        .subcommand(App::new("expand-shards")
-            .about(r#"Create new key shards from a quorum of old key shards. The new key shards are separate to existing key shards, which means you are increasing the number of shards in circulation. This operation is recommended when you wish to add a new key shard holder to an existing quorum (and you are still confident that no more than N-1 shard holders will conspire against you)."#)
-            .arg(Arg::new("interactive")
-                .long("interactive")
-                .help(r#"Ask for data stored in QR codes interactively rather than scanning images."#)
-                // TODO: Make this optional.
-                .required(true))
-            .arg(Arg::new("new-shards")
-                .short('n')
-                .long("new-shards")
-                .value_name("NUM SHARDS")
-                .help(r#"Number of new shards to create."#)
-                .takes_value(true)
-                .required(true)))
+        .subcommand(expand_shards_cli())
         // paperback-cli recreate-shards --interactive <SHARD-ID>...
-        .subcommand(App::new("recreate-shards")
-            .about(r#"Re-create key shards with a given identifier from a quorum of old key shards. The re-created key shards are identical to the original versions of said key shards. This operation is recommended when one of the key shard holders lose their key shard and need a replacement (this ensures that they cannot fool you into getting an distinct new shard in addition to the original)."#)
-            .arg(Arg::new("interactive")
-                .long("interactive")
-                .help(r#"Ask for data stored in QR codes interactively rather than scanning images."#)
-                // TODO: Make this optional.
-                .required(true))
-            .arg(Arg::new("shard-ids")
-                .value_name("SHARD ID")
-                .help(r#"Shard identifier(s) of the shard(s) to recreate."#)
-                .takes_value(true)
-                .multiple_values(true)
-                .required(true)))
+        .subcommand(recreate_shards_cli())
         // paperback-cli reprint --interactive [--main-document|--shard]
-        .subcommand(App::new("reprint")
-            .about(r#""Re-print" a paperback document by generating a new PDF from an existing PDF."#)
-            .arg(Arg::new("interactive")
-                .long("interactive")
-                .help("Ask for data stored in QR codes interactively rather than scanning images.")
-                // TODO: Make this optional.
-                .required(true))
-            .arg(Arg::new("main-document")
-                .long("main-document")
-                .help(r#"Reprint a paperback main document."#))
-            .arg(Arg::new("shard")
-                .long("shard")
-                .help(r#"Reprint a paperback key shard."#))
-            .group(ArgGroup::new("type")
-                .args(&["main-document", "shard"])
-                .required(true)))
-        .subcommand(raw::subcommands());
+        .subcommand(reprint_cli())
+        // paperback-cli raw ...
+        .subcommand(raw::subcommands())
+}
+
+fn main() -> Result<(), Box<dyn StdError>> {
+    let mut app = cli();
 
     let ret = match app.get_matches_mut().subcommand() {
         Some(("raw", sub_matches)) => raw::submatch(&mut app, sub_matches),
@@ -473,4 +515,9 @@ fn main() -> Result<(), Box<dyn StdError>> {
     }?;
 
     Ok(ret)
+}
+
+#[test]
+fn verify_cli() {
+    cli().debug_assert();
 }
