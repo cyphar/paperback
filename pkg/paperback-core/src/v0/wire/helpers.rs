@@ -21,7 +21,7 @@ use crate::v0::{
     CHACHAPOLY_NONCE_LENGTH,
 };
 
-use ed25519_dalek::{PublicKey, SecretKey, Signature, SignatureError};
+use ed25519_dalek::{SecretKey, Signature, SignatureError, VerifyingKey};
 use multihash::Multihash;
 use nom::{
     branch::alt,
@@ -59,23 +59,31 @@ pub(super) fn multihash(input: &[u8]) -> IResult<&[u8], Multihash> {
     Ok((input, hash))
 }
 
-pub(super) fn take_ed25519_pub(input: &[u8]) -> IResult<&[u8], Result<PublicKey, SignatureError>> {
+pub(super) fn take_ed25519_pub(
+    input: &[u8],
+) -> IResult<&[u8], Result<VerifyingKey, SignatureError>> {
     let (input, _) = verify(varuint_nom::u32, |x| *x == PREFIX_ED25519_PUB)(input)?;
     let (input, public_key) = take(ed25519_dalek::PUBLIC_KEY_LENGTH)(input)?;
 
-    Ok((input, PublicKey::from_bytes(public_key)))
+    // This conversion cannot fail, by definition.
+    let public_key_arr: [u8; ed25519_dalek::PUBLIC_KEY_LENGTH] =
+        public_key.try_into().expect(&format!(
+            "slice of length {} should convert to array of length {}",
+            public_key.len(),
+            ed25519_dalek::PUBLIC_KEY_LENGTH
+        ));
+
+    Ok((input, VerifyingKey::from_bytes(&public_key_arr)))
 }
 
 pub(super) fn take_ed25519_sig(input: &[u8]) -> IResult<&[u8], Result<Signature, SignatureError>> {
     let (input, _) = verify(varuint_nom::u32, |x| *x == PREFIX_ED25519_SIG)(input)?;
-    let (input, public_key) = take(ed25519_dalek::SIGNATURE_LENGTH)(input)?;
+    let (input, sig) = take(ed25519_dalek::SIGNATURE_LENGTH)(input)?;
 
-    Ok((input, Signature::from_bytes(public_key)))
+    Ok((input, Signature::from_slice(&sig)))
 }
 
-pub(super) fn take_ed25519_sec(
-    input: &[u8],
-) -> IResult<&[u8], Option<Result<SecretKey, SignatureError>>> {
+pub(super) fn take_ed25519_sec(input: &[u8]) -> IResult<&[u8], Option<SecretKey>> {
     let (input, (_, private_key)) = alt((
         tuple((
             // Unsealed document -- fetch the key.
@@ -89,7 +97,26 @@ pub(super) fn take_ed25519_sec(
         )),
     ))(input)?;
 
-    Ok((input, private_key.map(SecretKey::from_bytes)))
+    // Somewhat ugly hack to make sure we get the right size of the secret key
+    // type in the error message below.
+    trait Length {
+        const LENGTH: usize;
+    }
+    impl<T, const L: usize> Length for [T; L] {
+        const LENGTH: usize = L;
+    }
+
+    Ok((
+        input,
+        private_key.map(|key| {
+            // This conversion cannot fail, by definition.
+            key.try_into().expect(&format!(
+                "slice of length {} should convert to array of length {}",
+                key.len(),
+                SecretKey::LENGTH
+            ))
+        }),
+    ))
 }
 
 pub(super) fn take_chachapoly_key(input: &[u8]) -> IResult<&[u8], ChaChaPolyKey> {

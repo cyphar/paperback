@@ -24,7 +24,7 @@ use crate::{
 use aead::{generic_array::GenericArray, Aead, AeadCore, NewAead};
 use bip39::{Language, Mnemonic};
 use chacha20poly1305::ChaCha20Poly1305;
-use ed25519_dalek::{Keypair, PublicKey, Signature, Signer};
+use ed25519_dalek::{Signature, Signer, SigningKey, VerifyingKey};
 use multihash::{Multihash, MultihashDigest};
 use rand::RngCore;
 use unsigned_varint::encode as varuint_encode;
@@ -75,6 +75,9 @@ pub enum Error {
     #[error("failed to decode shard id: {0}")]
     ShardIdDecode(multibase::Error),
 
+    #[error("failed to decode private key: {0}")]
+    PrivateKeyDecode(ed25519_dalek::SignatureError),
+
     #[error("bip39 phrase failure: {0}")]
     Bip39(bip39::ErrorKind),
 
@@ -93,7 +96,7 @@ impl From<anyhow::Error> for Error {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 struct Identity {
-    id_public_key: PublicKey,
+    id_public_key: VerifyingKey,
     id_signature: Signature,
 }
 
@@ -102,11 +105,11 @@ impl quickcheck::Arbitrary for Identity {
     fn arbitrary(g: &mut quickcheck::Gen) -> Self {
         let bytes = Vec::<u8>::arbitrary(g);
 
-        let id_keypair = Keypair::generate(&mut rand::thread_rng());
+        let id_keypair = SigningKey::generate(&mut rand::thread_rng());
         let id_signature = id_keypair.sign(&bytes);
 
         Self {
-            id_public_key: id_keypair.public,
+            id_public_key: id_keypair.verifying_key(),
             id_signature,
         }
     }
@@ -125,7 +128,7 @@ where
 #[derive(Debug)]
 struct ShardSecret {
     doc_key: ChaChaPolyKey,
-    id_private_key: Option<ed25519_dalek::SecretKey>,
+    id_keypair: Option<ed25519_dalek::SigningKey>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -136,7 +139,7 @@ struct KeyShardBuilder {
 }
 
 impl KeyShardBuilder {
-    fn signable_bytes(&self, id_public_key: &PublicKey) -> Vec<u8> {
+    fn signable_bytes(&self, id_public_key: &VerifyingKey) -> Vec<u8> {
         let mut bytes = self.to_wire();
 
         // Append the Ed25519 public key used for signing.
@@ -147,12 +150,12 @@ impl KeyShardBuilder {
         bytes
     }
 
-    fn sign(self, id_keypair: &Keypair) -> KeyShard {
-        let bytes = self.signable_bytes(&id_keypair.public);
+    fn sign(self, id_keypair: &SigningKey) -> KeyShard {
+        let bytes = self.signable_bytes(&id_keypair.verifying_key());
         KeyShard {
             inner: self,
             identity: Identity {
-                id_public_key: id_keypair.public,
+                id_public_key: id_keypair.verifying_key(),
                 id_signature: id_keypair.sign(&bytes),
             },
         }
@@ -184,7 +187,7 @@ pub struct KeyShard {
 #[cfg(test)]
 impl quickcheck::Arbitrary for KeyShard {
     fn arbitrary(g: &mut quickcheck::Gen) -> Self {
-        let id_keypair = Keypair::generate(&mut rand::thread_rng());
+        let id_keypair = SigningKey::generate(&mut rand::thread_rng());
         KeyShardBuilder::arbitrary(g).sign(&id_keypair)
     }
 }
@@ -296,7 +299,7 @@ struct MainDocumentMeta {
 }
 
 impl MainDocumentMeta {
-    fn aad(&self, id_public_key: &PublicKey) -> Vec<u8> {
+    fn aad(&self, id_public_key: &VerifyingKey) -> Vec<u8> {
         let mut bytes = self.to_wire();
 
         // Append the public key used for signing.
@@ -326,7 +329,7 @@ struct MainDocumentBuilder {
 }
 
 impl MainDocumentBuilder {
-    fn signable_bytes(&self, id_public_key: &PublicKey) -> Vec<u8> {
+    fn signable_bytes(&self, id_public_key: &VerifyingKey) -> Vec<u8> {
         let mut bytes = self.to_wire();
 
         // Append the Ed25519 public key used for signing.
@@ -337,12 +340,12 @@ impl MainDocumentBuilder {
         bytes
     }
 
-    fn sign(self, id_keypair: &Keypair) -> MainDocument {
-        let bytes = self.signable_bytes(&id_keypair.public);
+    fn sign(self, id_keypair: &SigningKey) -> MainDocument {
+        let bytes = self.signable_bytes(&id_keypair.verifying_key());
         MainDocument {
             inner: self,
             identity: Identity {
-                id_public_key: id_keypair.public,
+                id_public_key: id_keypair.verifying_key(),
                 id_signature: id_keypair.sign(&bytes),
             },
         }
@@ -405,7 +408,7 @@ impl MainDocument {
 #[cfg(test)]
 impl quickcheck::Arbitrary for MainDocument {
     fn arbitrary(g: &mut quickcheck::Gen) -> Self {
-        let id_keypair = Keypair::generate(&mut rand::thread_rng());
+        let id_keypair = SigningKey::generate(&mut rand::thread_rng());
         MainDocumentBuilder::arbitrary(g).sign(&id_keypair)
     }
 }

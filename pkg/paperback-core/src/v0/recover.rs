@@ -28,7 +28,7 @@ use std::{
 
 use aead::{Aead, NewAead, Payload};
 use chacha20poly1305::ChaCha20Poly1305;
-use ed25519_dalek::{Keypair, PublicKey};
+use ed25519_dalek::VerifyingKey;
 use multihash::Multihash;
 use once_cell::unsync::OnceCell;
 
@@ -83,11 +83,11 @@ impl From<KeyShard> for Type {
 }
 
 #[derive(Debug, Clone, Eq)]
-struct HashablePublicKey(PublicKey);
+struct HashablePublicKey(VerifyingKey);
 
 impl<P> From<P> for HashablePublicKey
 where
-    P: AsRef<PublicKey>,
+    P: AsRef<VerifyingKey>,
 {
     fn from(from: P) -> Self {
         Self(*from.as_ref())
@@ -372,7 +372,7 @@ pub struct Quorum {
     shards: Vec<KeyShard>,
     // Cached consensus information.
     version: u32,
-    id_public_key: PublicKey,
+    id_public_key: VerifyingKey,
     doc_chksum: Multihash,
     // Lazy-initialised dealer, reconstructed from key shards.
     dealer: OnceCell<Dealer>,
@@ -408,8 +408,8 @@ impl Quorum {
 
         // Double-check that the private key agrees with the quorum's public key
         // choice.
-        if let Some(id_private_key) = secret.id_private_key {
-            if PublicKey::from(&id_private_key) != self.id_public_key {
+        if let Some(id_keypair) = secret.id_keypair {
+            if id_keypair.verifying_key() != self.id_public_key {
                 return Err(Error::InvariantViolation(
                     "private key doesn't match quorum public key",
                 ));
@@ -432,23 +432,17 @@ impl Quorum {
         let secret = ShardSecret::from_wire(dealer.secret()).map_err(Error::ShardSecretDecode)?;
 
         // Get the private key so we can sign the new shards.
-        let id_private_key = secret.id_private_key.ok_or(Error::MissingCapability(
+        let id_keypair = secret.id_keypair.ok_or(Error::MissingCapability(
             "document is sealed -- no new key shards allowed",
         ))?;
 
         // Make sure the private key matches the expected public key.
-        let id_public_key = PublicKey::from(&id_private_key);
+        let id_public_key = id_keypair.verifying_key();
         if id_public_key != self.id_public_key {
             return Err(Error::InvariantViolation(
                 "id_secret_key doesn't match expected id_public_key",
             ));
         }
-
-        // Create the signing keypair.
-        let id_keypair = Keypair {
-            secret: id_private_key,
-            public: id_public_key,
-        };
 
         // Extend new shards.
         Ok(KeyShardBuilder {

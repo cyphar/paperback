@@ -32,13 +32,13 @@ aead = "^0.4"
 anyhow = "^1"
 chacha20poly1305 = "^0.9"
 digest = "^0.10"
-ed25519-dalek = "^1.0.1"
+ed25519-dalek = { version = "^2.0.0", features = ["rand_core"] }
 itertools = "^0.10"
 multibase = "^0.9"
 multihash = "^0.15"
 nom = "^7" # This must match the unsigned-varint version.
 once_cell = "^1.9"
-rand = "^0.7" # This must match the ed25519-dalek version.
+rand = "^0.8" # This must match the ed25519-dalek version.
 printpdf = { version = "^0.5", features = ["svg"] }
 qrcode = "^0.12"
 serde = { version = "^1", features = ["derive"] }

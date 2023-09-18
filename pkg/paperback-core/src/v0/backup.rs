@@ -26,20 +26,20 @@ use crate::{
 
 use aead::{Aead, NewAead, Payload};
 use chacha20poly1305::ChaCha20Poly1305;
-use ed25519_dalek::{Keypair, SecretKey};
+use ed25519_dalek::SigningKey;
 use rand::{rngs::OsRng, RngCore};
 
 pub struct Backup {
     main_document: MainDocument,
     dealer: Dealer,
-    id_keypair: Keypair,
+    id_keypair: SigningKey,
 }
 
 impl Backup {
     // XXX: This internal API is a bit ugly...
     fn inner_new(quorum_size: u32, secret: &[u8], sealed: bool) -> Result<Self, Error> {
         // Generate identity keypair.
-        let id_keypair = Keypair::generate(&mut OsRng);
+        let id_keypair = SigningKey::generate(&mut OsRng);
 
         // Generate key and nonce.
         let mut doc_key = ChaChaPolyKey::default();
@@ -49,12 +49,10 @@ impl Backup {
 
         // Construct shard secret and serialise it.
         let shard_secret = {
-            let id_private_key = SecretKey::from_bytes(id_keypair.secret.as_bytes())
-                .expect("round-trip of ed25519 key to get around non-Copy must never fail");
             ShardSecret {
                 doc_key,
-                id_private_key: match sealed {
-                    false => Some(id_private_key),
+                id_keypair: match sealed {
+                    false => Some(id_keypair.clone()),
                     true => None,
                 },
             }
@@ -71,7 +69,7 @@ impl Backup {
         let aead = ChaCha20Poly1305::new(&doc_key);
         let payload = Payload {
             msg: secret,
-            aad: &main_document_meta.aad(&id_keypair.public),
+            aad: &main_document_meta.aad(&id_keypair.verifying_key()),
         };
         let ciphertext = aead
             .encrypt(&doc_nonce, payload)

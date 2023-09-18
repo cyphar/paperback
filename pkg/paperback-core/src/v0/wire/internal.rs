@@ -21,7 +21,7 @@ use crate::v0::{
     ChaChaPolyKey, Identity, ShardSecret,
 };
 
-use ed25519_dalek::{PublicKey, SecretKey, Signature, SignatureError};
+use ed25519_dalek::{Signature, SignatureError, SigningKey, VerifyingKey};
 use unsigned_varint::encode as varuint_encode;
 
 // TODO: Completely rewrite this code. This is a very quick-and-dirty
@@ -53,7 +53,7 @@ impl ToWire for Identity {
 }
 
 type IdentityParseResult = (
-    Result<PublicKey, SignatureError>,
+    Result<VerifyingKey, SignatureError>,
     Result<Signature, SignatureError>,
 );
 
@@ -95,11 +95,11 @@ impl ToWire for ShardSecret {
             .chain(&self.doc_key)
             .for_each(|b| bytes.push(*b));
 
-        let (prefix, id_private_key) = match &self.id_private_key {
-            Some(key) => (PREFIX_ED25519_SECRET, key.as_bytes()),
+        let (prefix, id_private_key) = match &self.id_keypair {
+            Some(key) => (PREFIX_ED25519_SECRET, key.to_bytes()),
             None => (
                 PREFIX_ED25519_SECRET_SEALED,
-                &[0u8; ed25519_dalek::SECRET_KEY_LENGTH],
+                [0u8; ed25519_dalek::SECRET_KEY_LENGTH],
             ),
         };
 
@@ -114,7 +114,7 @@ impl ToWire for ShardSecret {
     }
 }
 
-type ShardSecretParseResult = (ChaChaPolyKey, Option<Result<SecretKey, SignatureError>>);
+type ShardSecretParseResult = (ChaChaPolyKey, Option<SigningKey>);
 
 // Internal only -- users can't see ShardSecret.
 impl FromWire for ShardSecret {
@@ -126,23 +126,20 @@ impl FromWire for ShardSecret {
             let (input, doc_key) = take_chachapoly_key(input)?;
             let (input, private_key) = take_ed25519_sec(input)?;
 
-            Ok((input, (doc_key, private_key)))
+            Ok((
+                input,
+                (doc_key, private_key.as_ref().map(SigningKey::from_bytes)),
+            ))
         }
         let mut parse = complete(parse);
 
-        let (input, (doc_key, private_key)) = parse(input).map_err(|err| format!("{:?}", err))?;
-
-        let id_private_key = match private_key {
-            Some(Ok(key)) => Some(key),
-            None => None,
-            Some(Err(err)) => return Err(format!("{:?}", err)),
-        };
+        let (input, (doc_key, id_keypair)) = parse(input).map_err(|err| format!("{:?}", err))?;
 
         Ok((
             input,
             ShardSecret {
                 doc_key,
-                id_private_key,
+                id_keypair,
             },
         ))
     }
@@ -152,14 +149,14 @@ impl FromWire for ShardSecret {
 mod test {
     use super::*;
 
-    use ed25519_dalek::{Keypair, Signer};
+    use ed25519_dalek::{Signer, SigningKey};
     use rand::{rngs::OsRng, RngCore};
 
     // TODO: Get rid of this ugliness.
     impl PartialEq for ShardSecret {
         fn eq(&self, other: &Self) -> bool {
             self.doc_key == other.doc_key
-                && match (&self.id_private_key, &other.id_private_key) {
+                && match (&self.id_keypair, &other.id_keypair) {
                     (Some(left), Some(right)) => left.to_bytes() == right.to_bytes(),
                     (None, None) => true,
                     _ => false,
@@ -169,9 +166,9 @@ mod test {
 
     #[quickcheck]
     fn identity_roundtrip(data: Vec<u8>) -> bool {
-        let id_keypair = Keypair::generate(&mut OsRng);
+        let id_keypair = SigningKey::generate(&mut OsRng);
 
-        let id_public_key = id_keypair.public.clone();
+        let id_public_key = id_keypair.verifying_key().clone();
         let id_signature = id_keypair.sign(&data);
 
         let identity = Identity {
@@ -190,9 +187,9 @@ mod test {
 
         let secret = ShardSecret {
             doc_key: doc_key,
-            id_private_key: match sealed {
+            id_keypair: match sealed {
                 true => None,
-                false => Some(Keypair::generate(&mut OsRng).secret),
+                false => Some(SigningKey::generate(&mut OsRng)),
             },
         };
         let secret2 = ShardSecret::from_wire(secret.to_wire()).unwrap();
