@@ -41,8 +41,7 @@ members = [
 
 [dependencies]
 "paperback-core" = { path = "pkg/paperback-core" }
-
-clap = "^3"
+clap = { version = "^4", features = ["wrap_help"] }
 anyhow = "^1"
 multibase = "^0.9"
 

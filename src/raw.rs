@@ -23,7 +23,7 @@ use std::{
 };
 
 use anyhow::{anyhow, Context, Error};
-use clap::{App, Arg, ArgMatches};
+use clap::{Arg, ArgAction, ArgMatches, Command};
 
 extern crate paperback_core;
 use paperback_core::latest as paperback;
@@ -31,30 +31,30 @@ use paperback_core::latest as paperback;
 const ENCODING_BASE: multibase::Base = multibase::Base::Base32Z;
 
 // paperback-cli raw backup [--sealed] --quorum-size <QUORUM SIZE> --shards <SHARDS> INPUT
-fn raw_backup_cli() -> App<'static> {
-    App::new("backup")
+fn raw_backup_cli() -> Command {
+    Command::new("backup")
                 .about("Create a new paperback backup.")
                 .arg(Arg::new("sealed")
                     .long("sealed")
                     .help("Create a sealed backup, which cannot be expanded (have new shards be created) after creation.")
-                    .possible_values(&["true", "false"])
-                    .default_value("false"))
-                .arg(Arg::new("quorum_size")
+                    .action(ArgAction::SetTrue))
+                .arg(Arg::new("quorum-size")
                     .short('n')
                     .long("quorum-size")
                     .value_name("QUORUM SIZE")
                     .help("Number of shards required to recover the document (must not be larger than --shards).")
-                    .takes_value(true)
+                    .action(ArgAction::Set)
                     .required(true))
                 .arg(Arg::new("shards")
                     .short('k')
                     .long("shards")
                     .value_name("NUM SHARDS")
                     .help("Number of shards to create (must not be smaller than --quorum-size).")
-                    .takes_value(true)
+                    .action(ArgAction::Set)
                     .required(true))
                 .arg(Arg::new("INPUT")
                     .help(r#"Path to file containing secret data to backup ("-" to read from stdin)."#)
+                    .action(ArgAction::Set)
                     .allow_hyphen_values(true)
                     .required(true)
                     .index(1))
@@ -63,24 +63,20 @@ fn raw_backup_cli() -> App<'static> {
 fn raw_backup(matches: &ArgMatches) -> Result<(), Error> {
     use paperback::{Backup, ToWire};
 
-    let sealed: bool = matches
-        .value_of("sealed")
-        .expect("invalid --sealed argument")
-        .parse()
-        .context("--sealed argument was not a boolean")?;
+    let sealed = matches.get_flag("sealed");
     let quorum_size: u32 = matches
-        .value_of("quorum_size")
-        .expect("required --quorum_size argument not given")
+        .get_one::<String>("quorum-size")
+        .context("required --quorum-size argument not provided")?
         .parse()
         .context("--quorum-size argument was not an unsigned integer")?;
     let num_shards: u32 = matches
-        .value_of("shards")
-        .expect("required --shards argument not given")
+        .get_one::<String>("shards")
+        .context("required --quorum-size argument not provided")?
         .parse()
         .context("--shards argument was not an unsigned integer")?;
     let input_path = matches
-        .value_of("INPUT")
-        .expect("required INPUT argument not given");
+        .get_one::<String>("INPUT")
+        .context("required INPUT argument not provided")?;
 
     if num_shards < quorum_size {
         return Err(anyhow!("invalid arguments: number of shards cannot be smaller than quorum size (such a backup is unrecoverable)"));
@@ -153,8 +149,8 @@ fn read_oneline_file(prompt: &str, path_or_stdin: &str) -> Result<String, Error>
 }
 
 // paperback-cli raw restore --main-document <MAIN DOCUMENT> (--shards <SHARD>)... OUTPUT
-fn raw_restore_cli() -> App<'static> {
-    App::new("restore")
+fn raw_restore_cli() -> Command {
+    Command::new("restore")
         .about("Restore the secret data from a paperback backup.")
         .arg(
             Arg::new("main_document")
@@ -162,7 +158,8 @@ fn raw_restore_cli() -> App<'static> {
                 .long("main-document")
                 .value_name("MAIN DOCUMENT PATH")
                 .help(r#"Path to paperback main document ("-" to read from stdin)."#)
-                .takes_value(true)
+                .action(ArgAction::Set)
+                .allow_hyphen_values(true)
                 .required(true),
         )
         .arg(
@@ -171,14 +168,14 @@ fn raw_restore_cli() -> App<'static> {
                 .long("shard")
                 .value_name("SHARD PATH")
                 .help(r#"Path to each paperback shard ("-" to read from stdin)."#)
-                .takes_value(true)
-                .multiple_occurrences(true)
-                .number_of_values(1)
+                .action(ArgAction::Append)
+                .allow_hyphen_values(true)
                 .required(true),
         )
         .arg(
             Arg::new("OUTPUT")
                 .help(r#"Path to write recovered secret data to ("-" to write to stdout)."#)
+                .action(ArgAction::Set)
                 .allow_hyphen_values(true)
                 .required(true)
                 .index(1),
@@ -189,14 +186,14 @@ fn raw_restore(matches: &ArgMatches) -> Result<(), Error> {
     use paperback::{EncryptedKeyShard, FromWire, MainDocument, UntrustedQuorum};
 
     let main_document_path = matches
-        .value_of("main_document")
-        .expect("required --main-document argument not given");
+        .get_one::<String>("main_document")
+        .context("required --main-document argument not provided")?;
     let shard_paths = matches
-        .values_of("shards")
-        .expect("required --shard arguments not given");
+        .get_many::<String>("shards")
+        .context("required --shard argument not provided")?;
     let output_path = matches
-        .value_of("OUTPUT")
-        .expect("required OUTPUT argument not given");
+        .get_one::<String>("OUTPUT")
+        .context("required OUTPUT argument not provided")?;
 
     let main_document = MainDocument::from_wire_multibase(
         read_oneline_file("Main Document Data", main_document_path)
@@ -264,16 +261,16 @@ fn raw_restore(matches: &ArgMatches) -> Result<(), Error> {
 }
 
 // paperback-cli raw expand --new-shards <N> (--shards <SHARD>)...
-fn raw_expand_cli() -> App<'static> {
-    App::new("expand")
+fn raw_expand_cli() -> Command {
+    Command::new("expand")
         .about("Restore the secret data from a paperback backup.")
         .arg(
-            Arg::new("new_shards")
+            Arg::new("new-shards")
                 .short('n')
                 .long("new-shards")
                 .value_name("NUM SHARDS")
                 .help(r#"Number of new shards to create."#)
-                .takes_value(true)
+                .action(ArgAction::Set)
                 .required(true),
         )
         .arg(
@@ -282,9 +279,8 @@ fn raw_expand_cli() -> App<'static> {
                 .long("shard")
                 .value_name("SHARDS")
                 .help(r#"Path to each paperback shard ("-" to read from stdin)."#)
-                .takes_value(true)
-                .multiple_occurrences(true)
-                .number_of_values(1)
+                .action(ArgAction::Append)
+                .allow_hyphen_values(true)
                 .required(true),
         )
 }
@@ -293,13 +289,13 @@ fn raw_expand(matches: &ArgMatches) -> Result<(), Error> {
     use paperback::{EncryptedKeyShard, FromWire, NewShardKind, ToWire, UntrustedQuorum};
 
     let shard_paths = matches
-        .values_of("shards")
-        .expect("required --shard arguments not given");
+        .get_many::<String>("shards")
+        .context("required --shard argument not provided")?;
     let num_new_shards: u32 = matches
-        .value_of("new_shards")
-        .expect("required --new-shards argument not given")
+        .get_one::<String>("new-shards")
+        .context("required --new-shards argument not provided")?
         .parse()
-        .context("--shards argument was not an unsigned integer")?;
+        .context("--new-shards argument was not an unsigned integer")?;
 
     let mut quorum = UntrustedQuorum::new();
     for (idx, shard_path) in shard_paths.enumerate() {
@@ -357,25 +353,25 @@ fn raw_expand(matches: &ArgMatches) -> Result<(), Error> {
     Ok(())
 }
 
-pub(crate) fn submatch(app: &mut App<'_>, matches: &ArgMatches) -> Result<(), Error> {
+pub(crate) fn submatch(app: &mut Command, matches: &ArgMatches) -> Result<(), Error> {
     match matches.subcommand() {
         Some(("backup", sub_matches)) => raw_backup(sub_matches),
         Some(("restore", sub_matches)) => raw_restore(sub_matches),
         Some(("expand", sub_matches)) => raw_expand(sub_matches),
         Some((subcommand, _)) => {
             // We should never end up here.
-            app.write_help(&mut io::stderr())?;
+            app.print_help()?;
             Err(anyhow!("unknown subcommand 'raw {}'", subcommand))
         }
         None => {
-            app.write_help(&mut io::stderr())?;
+            app.print_help()?;
             Err(anyhow!("no 'raw' subcommand specified"))
         }
     }
 }
 
-pub(crate) fn subcommands() -> App<'static> {
-    App::new("raw")
+pub(crate) fn subcommands() -> Command {
+    Command::new("raw")
             .about("Operate using raw text data, rather than on PDF documents. This mode is not recommended for general use, since it might be more complicated for inexperienced users to recover the document.")
             // paperback-cli raw backup [--sealed] --quorum-size <QUORUM SIZE> --shards <SHARDS> INPUT
             .subcommand(raw_backup_cli())
