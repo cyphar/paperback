@@ -248,7 +248,8 @@ fn recover(matches: &ArgMatches) -> Result<(), Error> {
 
     let quorum = quorum.validate().map_err(|err| {
         anyhow!(
-            "quorum failed to validate -- possible forgery! groupings: {:?}",
+            "quorum failed to validate -- possible forgery! {}; groupings: {:?}",
+            err.message,
             err.as_groups()
         )
     })?;
@@ -321,7 +322,8 @@ fn new_shards(new_shard_types: impl IntoIterator<Item = NewShardKind>) -> Result
 
     let quorum = quorum.validate().map_err(|err| {
         anyhow!(
-            "quorum failed to validate -- possible forgery! groupings: {:?}",
+            "quorum failed to validate -- possible forgery! {}; groupings: {:?}",
+            err.message,
             err.as_groups()
         )
     })?;

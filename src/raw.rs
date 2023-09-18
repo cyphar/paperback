@@ -234,7 +234,8 @@ fn raw_restore(matches: &ArgMatches) -> Result<(), Error> {
 
     let quorum = quorum.validate().map_err(|err| {
         anyhow!(
-            "quorum failed to validate -- possible forgery! groupings: {:?}",
+            "quorum failed to validate -- possible forgery! {}; groupings: {:?}",
+            err.message,
             err.as_groups()
         )
     })?;
@@ -325,7 +326,8 @@ fn raw_expand(matches: &ArgMatches) -> Result<(), Error> {
 
     let quorum = quorum.validate().map_err(|err| {
         anyhow!(
-            "quorum failed to validate -- possible forgery! groupings: {:?}",
+            "quorum failed to validate -- possible forgery! {}; groupings: {:?}",
+            err.message,
             err.as_groups()
         )
     })?;
