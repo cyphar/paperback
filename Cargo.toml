@@ -25,7 +25,7 @@ readme = "README.md"
 
 keywords = ["shamir", "secret", "crypto", "paper", "backup"]
 categories = ["cryptography"]
-edition = "2018"
+edition = "2021"
 
 [badges]
 maintenance = { status = "experimental" }
