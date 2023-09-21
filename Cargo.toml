@@ -18,6 +18,7 @@
 name = "paperback"
 version = "0.0.0"
 authors = ["Aleksa Sarai <cyphar@cyphar.com>"]
+license = "GPL-3.0-or-later"
 
 description = "Paper backup generator suitable for long-term storage."
 repository = "https://github.com/cyphar/paperback"
