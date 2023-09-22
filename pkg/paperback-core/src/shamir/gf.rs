@@ -336,7 +336,7 @@ impl DivAssign for GfElem {
     }
 }
 
-pub trait EvaluablePolynomial: fmt::Debug {
+pub trait EvaluablePolynomial: Send + Sync + fmt::Debug {
     /// Evaluate the polynomial at a given `x` value.
     fn evaluate(&self, x: GfElem) -> GfElem;
 

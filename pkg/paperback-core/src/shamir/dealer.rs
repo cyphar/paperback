@@ -24,6 +24,8 @@ use crate::shamir::{
 
 use std::mem;
 
+use rayon::prelude::*;
+
 /// Factory to share a secret using [Shamir Secret Sharing][sss].
 ///
 /// [sss]: https://en.wikipedia.org/wiki/Shamir%27s_Secret_Sharing
@@ -50,7 +52,7 @@ impl Dealer {
         let secret = secret.as_ref();
         let polys = secret
             // Generate &[u32] from &[u8], by chunking into sets of four.
-            .chunks(mem::size_of::<GfElemPrimitive>())
+            .par_chunks(mem::size_of::<GfElemPrimitive>())
             .map(GfElem::from_bytes)
             // Generate a random polynomial with the value as the constant.
             .map(|x0| {
@@ -68,12 +70,17 @@ impl Dealer {
 
     /// Get the secret value stored by the `Dealer`.
     pub fn secret(&self) -> Vec<u8> {
-        self.polys
-            .iter()
+        let mut secret = self
+            .polys
+            .par_iter()
             .map(|poly| poly.constant())
             .flat_map(|x| x.to_bytes())
-            .take(self.secret_len)
-            .collect::<Vec<_>>()
+            .collect::<Vec<_>>();
+
+        // Cannot call .take() on rayon::iter::FlatMap, so do it the
+        // old-fashioned way instead.
+        secret.drain(self.secret_len..);
+        secret
     }
 
     /// Generate a new `Shard` for the secret.
@@ -98,7 +105,7 @@ impl Dealer {
         }
         let ys = self
             .polys
-            .iter()
+            .par_iter()
             .map(|poly| {
                 let y = poly.evaluate(x);
                 assert!(self.threshold == 1 || y != poly.constant());
@@ -142,6 +149,7 @@ impl Dealer {
         );
 
         let polys = (0..polys_len)
+            .into_par_iter()
             .map(|i| {
                 let xs = shards.iter().map(|s| s.x);
                 let ys = shards.iter().map(|s| s.ys[i]);
