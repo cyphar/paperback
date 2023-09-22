@@ -25,7 +25,13 @@ extern crate quickcheck;
 extern crate quickcheck_macros;
 
 /// Implementation of Shamir Secret Sharing.
+#[cfg(not(feature = "donotuse_expose_internal_modules"))]
 mod shamir;
+
+// Expose the module so we can benchmark it with criterion. This feature is only enabled as a
+// dev-dependency.
+#[cfg(feature = "donotuse_expose_internal_modules")]
+pub mod shamir;
 
 /// Initial version of paperback wire format types.
 ///

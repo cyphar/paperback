@@ -49,9 +49,19 @@ tiny-bip39 = "^0.8"
 typenum = "^1"
 unsigned-varint = { version = "^0.7", features = ["nom"] }
 
+[features]
+donotuse_expose_internal_modules = []
+
 [dev-dependencies]
 quickcheck = "^1"
 quickcheck_macros = "^1"
+criterion = { version = "^0.5", features = ["html_reports"] }
+# FIXME: This is a hack to allow us to bencmark internal modules with criterion.
+"paperback-core" = { path = ".", features = [ "donotuse_expose_internal_modules" ] }
+
+[[bench]]
+name = "shamir"
+harness = false
 
 [patch.crates-io]
 # See <https://github.com/paritytech/unsigned-varint/pull/54>.
