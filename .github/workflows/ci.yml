@@ -94,3 +94,23 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           args: --all-features
+
+  bench:
+    name: cargo bench
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: stable
+        override: true
+    - uses: actions-rs/cargo@v1
+      with:
+        command: bench
+        args: --workspace
+    - name: upload benchmark results
+      uses: actions/upload-artifact@v3
+      with:
+        name: report
+        path: target/criterion/
