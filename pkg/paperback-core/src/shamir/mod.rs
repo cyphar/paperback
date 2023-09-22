@@ -31,7 +31,7 @@ mod dealer;
 mod gf;
 pub(crate) mod shard;
 
-pub use dealer::{recover_secret, Dealer};
+pub use dealer::Dealer;
 pub use shard::Shard;
 
 #[derive(Debug, thiserror::Error)]

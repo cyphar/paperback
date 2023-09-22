@@ -407,8 +407,7 @@ impl GfPolynomial {
     ///
     /// NOTE: This method is much slower than `GfBarycentric::recover` with
     /// little to no extra benefit (you don't need the full polyomial recovered
-    /// in most cases). In addition, if you need just the constant term then use
-    /// `lagrange_constant`.
+    /// in most cases).
     ///
     /// [lagrange]: https://en.wikipedia.org/wiki/Lagrange_polynomial
     // TODO: Add a warning for using this.
@@ -711,80 +710,6 @@ impl GfBarycentric {
     }
 }
 
-/// Interpolate the constant term of a polynomial of degree `n` in
-/// `GF(2^32)`, given a set of points along that polynomial.
-///
-/// The process for this computation is [Lagrange interpolation][lagrange].
-///
-/// This much more efficient than both `GfBarycentric::recover(...).constant`
-/// and `GfPolynomial::recover(...).constant()`, and thus should be used if you
-/// only need to retreive the constant term of an unknown polynomial.
-///
-/// [lagrange]: https://en.wikipedia.org/wiki/Lagrange_polynomial
-pub fn lagrange_constant<P: AsRef<[GfPoint]>>(
-    n: GfElemPrimitive,
-    points: P,
-) -> Result<GfElem, Error> {
-    let points = points.as_ref();
-    let k = points.len();
-    if k != (n + 1) as usize {
-        return Err(Error::NumPointsMismatch {
-            needed: (n + 1) as usize,
-            num_points: k,
-        });
-    }
-
-    let (xs, ys): (Vec<_>, Vec<_>) = points.iter().copied().unzip();
-
-    // Pre-invert all x values to avoid recalculating it n times.
-    let xs_inv = xs
-        .iter()
-        .map(|x| x.inverse().ok_or(Error::NonInvertiblePoint))
-        .collect::<Result<Vec<_>, _>>()?;
-
-    // To interpolate only the constant term of a polynomial, you can take
-    // the full Lagrange polynomial expressions (which requires expanding a
-    // multi binomial expression)
-    //
-    //     L(x) = \sum_{j_0}^k y_j l_j(x)
-    //   l_j(x) = \prod_{m=0,m!=j}^{k} \frac{x-x_m}{x_j-x_m}
-    //
-    // where k is the number of points (which is equial to the threshold, or
-    // the polynomial degree + 1), and simplify it. By substituting x=0
-    // (removing all of the x terms) we get a simpler expression with no
-    // multi binomial expansion
-    //
-    //     L(0) = \sum_{j_0}^k y_j l_j(0)
-    //   l_j(0) = \prod_{m=0,m!=j}^{k} \frac{x_m}{x_m-x_j}
-    //
-    // and then you can make an additional simplification (to reduce the
-    // number of numerical operations -- notably division because computing
-    // the multiplicative inverse is currently fairly expensive) by
-    // re-arranging the fraction so that we only need a single division at
-    // the end and divisions are by individual x_m values, which we can
-    // pre-compute the multiplicative inverse of
-    //
-    //        L(0) = \sum_{j_0}^k \frac{y_j}{linv_j(0)}
-    //   linv_j(0) = \prod_{m=0,m!=j}^{k} (1-\frac{x_j}{x_m})
-    //
-    // giving us the final expression
-    //
-    //   L(0) = \sum_{j=0}^{k} \frac{y_j}
-    //                              {\prod_{m=0,m!=j}^{k}
-    //                                    (1-\frac{x_j}{x_m})}
-    Ok((0..k).fold(GfElem::ZERO, |acc, j| {
-        // \sum_{j=0}^{k} \frac{y_j}...
-        acc + ys[j]
-            // ...{linv_j(0)}
-            / (0..k as usize)
-                .filter(|&m| m != j)
-                .fold(GfElem::ONE, |acc, m| {
-                    // (1-frac{x_j}{x_m}) == (1-x_j*xinv_m)
-                    acc * (GfElem::ONE - xs[j] * xs_inv[m])
-                })
-    }))
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
@@ -921,20 +846,6 @@ mod test {
     #[quickcheck]
     fn polynomial_constant(poly: GfPolynomial) -> bool {
         poly.evaluate(GfElem::ZERO) == poly.constant()
-    }
-
-    #[quickcheck]
-    fn polynomial_lagrange_constant(poly: GfPolynomial) -> bool {
-        let n = poly.degree();
-        let xs = (0..n + 1)
-            .map(|_| GfElem::new_rand(&mut OsRng))
-            .collect::<Vec<_>>();
-        let ys = xs.iter().map(|&x| poly.evaluate(x));
-        let points = xs.iter().copied().zip(ys).collect::<Vec<_>>();
-        let constant = lagrange_constant(n, points.as_slice())
-            .expect("should not get errors from lagrange_constant");
-
-        poly.constant() == constant
     }
 
     #[quickcheck]

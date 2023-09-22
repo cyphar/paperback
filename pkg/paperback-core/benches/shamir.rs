@@ -18,7 +18,7 @@
 
 use std::time::Duration;
 
-use paperback_core::{shamir, shamir::Dealer};
+use paperback_core::shamir::Dealer;
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion, Throughput};
 use rand::{distributions::Standard, Rng};
@@ -52,12 +52,6 @@ fn benchmark_recover_secret(c: &mut Criterion) {
             .map(|_| dealer.next_shard())
             .collect::<Vec<_>>();
         group.throughput(Throughput::Bytes(vec.len() as u64));
-        group.measurement_time(Duration::new(30 + 2 * quorum_size as u64, 0));
-        group.bench_with_input(
-            format!("shamir::recover_secret() N={:03}", quorum_size),
-            &shards,
-            |b, shards| b.iter(|| shamir::recover_secret(shards)),
-        );
         group.measurement_time(Duration::new(40 + quorum_size as u64, 0));
         group.bench_with_input(
             format!("Dealer::recover().secret() N={:03}", quorum_size),

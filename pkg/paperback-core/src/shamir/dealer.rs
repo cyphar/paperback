@@ -17,7 +17,7 @@
  */
 
 use crate::shamir::{
-    gf::{self, EvaluablePolynomial, GfBarycentric, GfElem, GfElemPrimitive, GfPolynomial},
+    gf::{EvaluablePolynomial, GfBarycentric, GfElem, GfElemPrimitive, GfPolynomial},
     shard::Shard,
     Error,
 };
@@ -160,48 +160,6 @@ impl Dealer {
     }
 }
 
-/// Reconstruct a secret from a set of `Shard`s.
-///
-/// This operation is significantly faster than `Dealer::recover`, so it should
-/// always be used if the caller only needs to recover the secret.
-/// `Dealer::recover` should only be used if the caller needs to create
-/// additional shards with `Dealer::next_shard`.
-pub fn recover_secret<S: AsRef<[Shard]>>(shards: S) -> Result<Vec<u8>, Error> {
-    let shards = shards.as_ref();
-    assert!(!shards.is_empty(), "must be provided at least one shard");
-
-    let threshold = shards[0].threshold();
-    let polys_len = shards[0].ys.len();
-    let secret_len = shards[0].secret_len;
-
-    // TODO: Implement this consistency checking more nicely.
-    for shard in shards {
-        assert!(shard.threshold() == threshold, "shards must be consistent");
-        assert!(shard.ys.len() == polys_len, "shards must be consistent");
-        assert!(shard.secret_len == secret_len, "shards must be consistent");
-    }
-
-    assert!(
-        shards.len() == threshold as usize,
-        "must have exactly {} shards",
-        threshold
-    );
-
-    Ok((0..polys_len)
-        .map(|i| {
-            let xs = shards.iter().map(|s| s.x);
-            let ys = shards.iter().map(|s| s.ys[i]);
-
-            let points = xs.zip(ys).collect::<Vec<_>>();
-            gf::lagrange_constant(threshold - 1, points.as_slice())
-        })
-        .collect::<Result<Vec<_>, _>>()? // XXX: I don't like double-collecting here but flat_map() causes issues.
-        .into_iter()
-        .flat_map(|x| x.to_bytes())
-        .take(secret_len)
-        .collect::<Vec<_>>())
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
@@ -248,7 +206,7 @@ mod test {
             })
             .collect::<Vec<_>>();
 
-        TestResult::from_bool(recover_secret(shards).unwrap() != secret)
+        TestResult::from_bool(Dealer::recover(shards).unwrap().secret() != secret)
     }
 
     #[quickcheck]
@@ -272,7 +230,7 @@ mod test {
             })
             .collect::<Vec<_>>();
 
-        TestResult::from_bool(recover_secret(shards).unwrap() == secret)
+        TestResult::from_bool(Dealer::recover(shards).unwrap().secret() == secret)
     }
 
     #[cfg(debug_assertions)] // not --release

@@ -17,7 +17,7 @@
  */
 
 use crate::{
-    shamir::{self, shard, Dealer},
+    shamir::{shard, Dealer},
     v0::{Error, FromWire, KeyShard, KeyShardBuilder, MainDocument, ShardId, ShardSecret},
 };
 
@@ -403,7 +403,7 @@ impl Quorum {
             .iter()
             .map(|s| s.inner.shard.clone())
             .collect::<Vec<_>>();
-        let secret = ShardSecret::from_wire(shamir::recover_secret(shards)?)
+        let secret = ShardSecret::from_wire(Dealer::recover(shards)?.secret())
             .map_err(Error::ShardSecretDecode)?;
 
         // Double-check that the private key agrees with the quorum's public key
