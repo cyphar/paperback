@@ -234,16 +234,11 @@ impl GfElem {
             //          = ri
             let (qi, ri) = Self::polynomial_div(r, newr, false);
 
-            // TODO: Switch this once destructuring_assignment is stable.
-
             // (t, newt) = (newt, t - qi * newt)
-            t = {
-                let tmpt = t ^ Self::polynomial_mul(qi, newt);
-                mem::replace(&mut newt, tmpt)
-            };
+            (t, newt) = (newt, t ^ Self::polynomial_mul(qi, newt));
 
             // (r, newr) = (newr, r - qi * newr) = (newr, ri)
-            r = mem::replace(&mut newr, ri);
+            (r, newr) = (newr, ri);
         }
 
         // If gcd(a, Self::POLYNOMIAL) != 1, that means the polynomial is
