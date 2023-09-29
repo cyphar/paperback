@@ -91,11 +91,14 @@ impl Dealer {
     ///       they have enough *unique* shards to reconstruct the secret.
     // TODO: I'm not convinced the chances of collision are low enough...
     pub fn next_shard(&self) -> Shard {
-        let mut x = GfElem::ZERO;
-        while x == GfElem::ZERO {
-            x = GfElem::new_rand(&mut rand::thread_rng());
+        let mut g = rand::thread_rng();
+        // TODO: We should probably add some limit to this.
+        loop {
+            match self.shard(GfElem::new_rand(&mut g)) {
+                Some(shard) => return shard,
+                None => continue,
+            }
         }
-        self.shard(x).expect("non x=0 shard should've been created")
     }
 
     /// Generate a `Shard` for the secret using the given `x` value.
@@ -103,21 +106,32 @@ impl Dealer {
         if x == GfElem::ZERO {
             return None;
         }
-        let ys = self
-            .polys
+
+        self.polys
             .par_iter()
             .map(|poly| {
                 let y = poly.evaluate(x);
-                assert!(self.threshold == 1 || y != poly.constant());
-                y
+                // If we are given an x value where one of the polynomials
+                // happens to produce the secret, it seems produent to not leak
+                // that information. In the case of next_shard(), this will just
+                // cause us to generate a different x value. This happens very
+                // rarely, and we don't care about paperback-expand usecases
+                // because we have never allowed these broken shards to be
+                // produed and thus generating one intentionally would never be
+                // needed by real users.
+                if y != poly.constant() || self.threshold == 1 {
+                    Some(y)
+                } else {
+                    None
+                }
             })
-            .collect::<Vec<_>>();
-        Some(Shard {
-            x,
-            ys,
-            threshold: self.threshold,
-            secret_len: self.secret_len,
-        })
+            .collect::<Option<Vec<_>>>()
+            .map(|ys| Shard {
+                x,
+                ys,
+                threshold: self.threshold,
+                secret_len: self.secret_len,
+            })
     }
 
     /// Reconstruct an entire `Dealer` from a *unique* set of `Shard`s.
