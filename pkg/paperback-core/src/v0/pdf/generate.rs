@@ -224,8 +224,8 @@ fn qr_with_fallback<D: AsRef<[u8]>>(
     qr_svg.add_to_layer(
         layer,
         SvgTransform {
-            translate_x: Some(qr_x),
-            translate_y: Some(top - qr_y),
+            translate_x: Some(qr_x.into()),
+            translate_y: Some((top - qr_y).into()),
             dpi: Some(SVG_DPI),
             scale_x: Some(scale_x),
             scale_y: Some(scale_y),
@@ -416,8 +416,8 @@ impl ToPdf for MainDocument {
                     svg.add_to_layer(
                         &current_layer,
                         SvgTransform {
-                            translate_x: Some(current_x),
-                            translate_y: Some(A4_HEIGHT - (current_y + target_size)),
+                            translate_x: Some(current_x.into()),
+                            translate_y: Some((A4_HEIGHT - (current_y + target_size)).into()),
                             dpi: Some(SVG_DPI),
                             scale_x: Some(target_size / Mm::from(width.into_pt(SVG_DPI))),
                             scale_y: Some(target_size / Mm::from(height.into_pt(SVG_DPI))),
@@ -729,8 +729,8 @@ impl ToPdf for (&EncryptedKeyShard, &KeyShardCodewords) {
             scissors_svg_ref.add_to_layer(
                 &current_layer,
                 SvgTransform {
-                    translate_x: Some(A5_MARGIN),
-                    translate_y: Some(A5_HEIGHT - (current_y + target_height)),
+                    translate_x: Some(A5_MARGIN.into()),
+                    translate_y: Some((A5_HEIGHT - (current_y + target_height)).into()),
                     scale_x: Some(scale),
                     scale_y: Some(scale),
                     ..Default::default()

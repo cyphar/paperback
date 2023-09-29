@@ -1307,8 +1307,9 @@ checksum = "5b40af805b3121feab8a3c29f04d8ad262fa8e0561883e7653e024ae4479e6de"
 
 [[package]]
 name = "printpdf"
-version = "0.5.0"
-source = "git+https://github.com/fschutt/printpdf?rev=4422e3a61dec97767a930322340c608338906702#4422e3a61dec97767a930322340c608338906702"
+version = "0.5.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6b61f0c6672a5507f0557c50c2263abc54fecc2a4c0ca56499be1396679a686c"
 dependencies = [
  "js-sys",
  "lopdf",
