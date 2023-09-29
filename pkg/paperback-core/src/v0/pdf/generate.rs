@@ -34,7 +34,7 @@ pub trait ToPdf {
 // builtin PDF fonts so we will need to switch to another font (and embed the
 // font data into the paperback code).
 
-const SVG_DPI: f64 = 300.0;
+const SVG_DPI: f32 = 300.0;
 
 mod colours {
     use printpdf::*;
@@ -108,23 +108,18 @@ fn banner(
     const BANNER_HEIGHT: Mm = Mm(9.0);
     top -= banner_margin;
 
-    // Dashed line box where the QR code would go.
-    let points = vec![
-        (Point::new(Mm(0.0), top), false),
-        (Point::new(width, top), false),
-        (Point::new(width, top - BANNER_HEIGHT), false),
-        (Point::new(Mm(0.0), top - BANNER_HEIGHT), false),
-    ];
-    let line = Line {
-        points,
-        is_closed: true,
-        has_fill: true,
-        has_stroke: false,
-        is_clipping_path: false,
-    };
-
+    // Background horizontal bar for banner.
     layer.set_fill_color(banner_colour);
-    layer.add_shape(line);
+    layer.add_polygon(Polygon {
+        rings: vec![vec![
+            (Point::new(Mm(0.0), top), false),
+            (Point::new(width, top), false),
+            (Point::new(width, top - BANNER_HEIGHT), false),
+            (Point::new(Mm(0.0), top - BANNER_HEIGHT), false),
+        ]],
+        mode: PolygonMode::Fill,
+        winding_order: WindingOrder::NonZero,
+    });
 
     // Add header text.
     layer.begin_text_section();
@@ -157,10 +152,10 @@ fn banner(
 fn qr_with_fallback<D: AsRef<[u8]>>(
     layer: &PdfLayerReference,
     top: Mm,
-    (width, margin, qr_fraction): (Mm, Mm, f64),
+    (width, margin, qr_fraction): (Mm, Mm, f32),
     data: D,
     font: &IndirectFontRef,
-    font_size: f64,
+    font_size: f32,
 ) -> Result<Mm, Error> {
     const DATA_MARGIN: Mm = Mm(3.0);
 
@@ -199,7 +194,7 @@ fn qr_with_fallback<D: AsRef<[u8]>>(
         })
         .collect::<Vec<String>>();
 
-    let data_height: Mm = Pt(font_size + (font_size + 2.0) * data_lines.len() as f64).into();
+    let data_height: Mm = Pt(font_size + (font_size + 2.0) * data_lines.len() as f32).into();
     let padded_data_height = data_height + DATA_MARGIN * 2.0;
     // Can't use std::cmp::max sadly.
     let total_height = if qr_size > padded_data_height {
@@ -427,52 +422,50 @@ impl ToPdf for MainDocument {
                 }
                 None => {
                     // Dashed line box where the QR code would go.
-                    let points = vec![
-                        (
-                            Point::new(
-                                current_x + QR_MARGIN / 2.0,
-                                A4_HEIGHT - (current_y + QR_MARGIN / 2.0),
+                    let polygon = Polygon {
+                        rings: vec![vec![
+                            (
+                                Point::new(
+                                    current_x + QR_MARGIN / 2.0,
+                                    A4_HEIGHT - (current_y + QR_MARGIN / 2.0),
+                                ),
+                                false,
                             ),
-                            false,
-                        ),
-                        (
-                            Point::new(
-                                current_x + target_size - QR_MARGIN / 2.0,
-                                A4_HEIGHT - (current_y + QR_MARGIN / 2.0),
+                            (
+                                Point::new(
+                                    current_x + target_size - QR_MARGIN / 2.0,
+                                    A4_HEIGHT - (current_y + QR_MARGIN / 2.0),
+                                ),
+                                false,
                             ),
-                            false,
-                        ),
-                        (
-                            Point::new(
-                                current_x + target_size - QR_MARGIN / 2.0,
-                                A4_HEIGHT - (current_y + target_size - QR_MARGIN / 2.0),
+                            (
+                                Point::new(
+                                    current_x + target_size - QR_MARGIN / 2.0,
+                                    A4_HEIGHT - (current_y + target_size - QR_MARGIN / 2.0),
+                                ),
+                                false,
                             ),
-                            false,
-                        ),
-                        (
-                            Point::new(
-                                current_x + QR_MARGIN / 2.0,
-                                A4_HEIGHT - (current_y + target_size - QR_MARGIN / 2.0),
+                            (
+                                Point::new(
+                                    current_x + QR_MARGIN / 2.0,
+                                    A4_HEIGHT - (current_y + target_size - QR_MARGIN / 2.0),
+                                ),
+                                false,
                             ),
-                            false,
-                        ),
-                    ];
-
-                    let line = Line {
-                        points,
-                        is_closed: true,
-                        has_fill: false,
-                        has_stroke: true,
-                        is_clipping_path: false,
+                        ]],
+                        mode: PolygonMode::Stroke,
+                        winding_order: WindingOrder::NonZero,
                     };
 
-                    let mut dash_pattern = LineDashPattern::default();
-                    dash_pattern.dash_1 = Some(6);
-                    dash_pattern.gap_1 = Some(4);
+                    let dash_pattern = LineDashPattern {
+                        dash_1: Some(6),
+                        gap_1: Some(4),
+                        ..LineDashPattern::default()
+                    };
 
                     current_layer.set_outline_color(colours::LIGHT_GREY);
                     current_layer.set_line_dash_pattern(dash_pattern);
-                    current_layer.add_shape(line);
+                    current_layer.add_polygon(polygon);
                 }
             };
             current_x += target_size;
@@ -699,7 +692,7 @@ impl ToPdf for (&EncryptedKeyShard, &KeyShardCodewords) {
             let scale = target_height / Mm::from(scissors_svg_ref.height.into_pt(SVG_DPI));
 
             // Dashed line.
-            let points = vec![
+            let line = Line::from_iter(vec![
                 (
                     Point::new(Mm(0.0), A5_HEIGHT - (current_y + target_height / 2.0)),
                     false,
@@ -708,22 +701,17 @@ impl ToPdf for (&EncryptedKeyShard, &KeyShardCodewords) {
                     Point::new(A5_WIDTH, A5_HEIGHT - (current_y + target_height / 2.0)),
                     false,
                 ),
-            ];
-            let line = Line {
-                points,
-                is_closed: false,
-                has_fill: false,
-                has_stroke: true,
-                is_clipping_path: false,
-            };
+            ]);
 
-            let mut dash_pattern = LineDashPattern::default();
-            dash_pattern.dash_1 = Some(6);
-            dash_pattern.gap_1 = Some(4);
+            let dash_pattern = LineDashPattern {
+                dash_1: Some(6),
+                gap_1: Some(4),
+                ..LineDashPattern::default()
+            };
 
             current_layer.set_outline_color(colours::KEY_SHARD_TRIM);
             current_layer.set_line_dash_pattern(dash_pattern);
-            current_layer.add_shape(line);
+            current_layer.add_line(line);
 
             // Scissors.
             scissors_svg_ref.add_to_layer(
