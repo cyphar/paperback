@@ -56,13 +56,13 @@ jobs:
       if: matrix.build == 'linux' || matrix.build == 'macos'
       run: strip target/${{ matrix.target }}/release/paperback
     - name: upload unix binaries
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       if: contains(matrix.build, 'win') == false
       with:
         name: "paperback.${{ matrix.target }}"
         path: "target/${{ matrix.target }}/release/paperback"
     - name: upload windows binaries
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       if: contains(matrix.build, 'win')
       with:
         name: "paperback-${{ matrix.target }}.exe"
