@@ -374,7 +374,7 @@ pub struct MainDocument {
 
 fn multihash_short_id(hash: Multihash, length: usize) -> String {
     let doc_chksum = hash.to_bytes();
-    let encoded_chksum = multibase::encode(multibase::Base::Base32Z, &doc_chksum);
+    let encoded_chksum = multibase::encode(multibase::Base::Base32Z, doc_chksum);
     // The *suffix* is the ID.
     let short_id = &encoded_chksum[encoded_chksum.len() - length..];
 
@@ -440,7 +440,7 @@ mod test {
 
     #[quickcheck]
     fn paperback_roundtrip_smoke(quorum_size: u8, secret: Vec<u8>) -> TestResult {
-        if quorum_size < 2 || quorum_size > 64 {
+        if !(2..=64).contains(&quorum_size) {
             return TestResult::discard();
         }
 
@@ -483,7 +483,7 @@ mod test {
 
     fn inner_paperback_expand_smoke<S: AsRef<[u8]>>(quorum_size: u32, secret: S) -> bool {
         // Construct a backup.
-        let backup = Backup::new(quorum_size.into(), secret.as_ref()).unwrap();
+        let backup = Backup::new(quorum_size, secret.as_ref()).unwrap();
         let main_document = backup.main_document().clone();
         let shards = (0..quorum_size)
             .map(|_| backup.next_shard().unwrap())
@@ -645,7 +645,7 @@ mod test {
     #[quickcheck]
     fn key_shard_encryption_roundtrip(shard: KeyShard) -> bool {
         let (enc_shard, codewords) = shard.clone().encrypt().unwrap();
-        let shard2 = enc_shard.decrypt(&codewords).unwrap();
+        let shard2 = enc_shard.decrypt(codewords).unwrap();
         shard == shard2
     }
 
@@ -656,7 +656,7 @@ mod test {
         #[cfg(not(debug_assertions))] // --release
         const RECREATE_UPPER: u8 = 180;
 
-        if quorum_size < 1 || quorum_size > RECREATE_UPPER {
+        if !(1..=RECREATE_UPPER).contains(&quorum_size) {
             return TestResult::discard();
         }
 

@@ -168,7 +168,7 @@ mod test {
     fn identity_roundtrip(data: Vec<u8>) -> bool {
         let id_keypair = SigningKey::generate(&mut OsRng);
 
-        let id_public_key = id_keypair.verifying_key().clone();
+        let id_public_key = id_keypair.verifying_key();
         let id_signature = id_keypair.sign(&data);
 
         let identity = Identity {
@@ -186,7 +186,7 @@ mod test {
         OsRng.fill_bytes(&mut doc_key);
 
         let secret = ShardSecret {
-            doc_key: doc_key,
+            doc_key,
             id_keypair: match sealed {
                 true => None,
                 false => Some(SigningKey::generate(&mut OsRng)),

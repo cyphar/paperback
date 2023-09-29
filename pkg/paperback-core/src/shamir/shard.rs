@@ -42,7 +42,7 @@ impl Shard {
     /// If two shards have the same identifier, they cannot be used together for
     /// secret recovery.
     pub fn id(&self) -> ShardId {
-        multibase::encode(multibase::Base::Base32Z, &self.x.to_bytes())
+        multibase::encode(multibase::Base::Base32Z, self.x.to_bytes())
     }
 
     /// Returns the number of *unique* sister `Shard`s required to recover the
@@ -144,7 +144,7 @@ mod test {
 
     #[quickcheck]
     fn shard_bytes_roundtrip(shard: Shard) -> bool {
-        let shard2 = Shard::from_wire(&shard.to_wire()).unwrap();
+        let shard2 = Shard::from_wire(shard.to_wire()).unwrap();
         shard == shard2
     }
 }

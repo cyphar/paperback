@@ -255,7 +255,7 @@ impl quickcheck::Arbitrary for GfElem {
     }
 
     fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
-        Box::new(self.0.shrink().into_iter().map(Self))
+        Box::new(self.0.shrink().map(Self))
     }
 }
 
@@ -534,13 +534,7 @@ impl quickcheck::Arbitrary for GfPolynomial {
     }
 
     fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
-        Box::new(
-            self.0
-                .shrink()
-                .into_iter()
-                .filter(|p| p.len() > 0)
-                .map(Self),
-        )
+        Box::new(self.0.shrink().filter(|p| !p.is_empty()).map(Self))
     }
 }
 

@@ -87,7 +87,7 @@ fn raw_backup(matches: &ArgMatches) -> Result<(), Error> {
         stdin_reader = io::stdin();
         &mut stdin_reader
     } else {
-        file_reader = File::open(&input_path)
+        file_reader = File::open(input_path)
             .with_context(|| format!("failed to open secret data file '{}'", input_path))?;
         &mut file_reader
     };
@@ -137,7 +137,7 @@ fn read_oneline_file(prompt: &str, path_or_stdin: &str) -> Result<String, Error>
         stdin_reader = io::stdin();
         &mut stdin_reader
     } else {
-        file_reader = File::open(&path_or_stdin)
+        file_reader = File::open(path_or_stdin)
             .with_context(|| format!("failed to open file '{}'", path_or_stdin))?;
         &mut file_reader
     };

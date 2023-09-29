@@ -180,7 +180,7 @@ mod test {
 
     #[quickcheck]
     fn basic_roundtrip(n: u16, secret: Vec<u8>) -> TestResult {
-        if n < 1 || n > 4096 {
+        if !(1..=4096).contains(&n) {
             return TestResult::discard();
         }
         let dealer = Dealer::new(n.into(), &secret);
@@ -199,7 +199,7 @@ mod test {
         // Note that large n values take a very long time to recover the secret.
         // This is proportional to secret.len(), which is controlled by
         // quickcheck and thus can be quite large.
-        if n < 2 || n > SECRET_UPPER || secret.len() < 1 {
+        if !(2..=SECRET_UPPER).contains(&n) || secret.is_empty() {
             return TestResult::discard();
         }
 
@@ -224,7 +224,7 @@ mod test {
         // Note that large n values take a very long time to recover the secret.
         // This is proportional to secret.len(), which is controlled by
         // quickcheck and thus can be quite large.
-        if n < 1 || n > SECRET_UPPER {
+        if !(1..=SECRET_UPPER).contains(&n) {
             return TestResult::discard();
         }
 
@@ -256,7 +256,8 @@ mod test {
         // recover -- which when paired with quickcheck makes it take far too
         // long. This is proportional to secret.len() (probably O(L*n^2) with
         // big constants or something like that).
-        if n < 2 || n > RECOVER_UPPER || secret.len() < 1 || test_xs.contains(&GfElem::ZERO) {
+        if !(2..=RECOVER_UPPER).contains(&n) || secret.is_empty() || test_xs.contains(&GfElem::ZERO)
+        {
             return TestResult::discard();
         }
         let dealer = Dealer::new(n.into(), secret);
@@ -304,7 +305,7 @@ mod test {
         // recover -- which when paired with quickcheck makes it take far too
         // long. This is proportional to secret.len() (probably O(L*n^2) with
         // big constants or something like that).
-        if n < 1 || n > RECOVER_UPPER || test_xs.contains(&GfElem::ZERO) {
+        if !(1..=RECOVER_UPPER).contains(&n) || test_xs.contains(&GfElem::ZERO) {
             return TestResult::discard();
         }
         let dealer = Dealer::new(n.into(), secret);

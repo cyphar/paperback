@@ -87,7 +87,7 @@ fn backup(matches: &ArgMatches) -> Result<(), Error> {
         stdin_reader = io::stdin();
         &mut stdin_reader
     } else {
-        file_reader = File::open(&input_path)
+        file_reader = File::open(input_path)
             .with_context(|| format!("failed to open secret data file '{}'", input_path))?;
         &mut file_reader
     };
@@ -507,7 +507,7 @@ fn cli() -> Command {
 fn main() -> Result<(), Box<dyn StdError>> {
     let mut app = cli();
 
-    let ret = match app.get_matches_mut().subcommand() {
+    match app.get_matches_mut().subcommand() {
         Some(("raw", sub_matches)) => raw::submatch(&mut app, sub_matches),
         Some(("backup", sub_matches)) => backup(sub_matches),
         Some(("recover", sub_matches)) => recover(sub_matches),
@@ -525,7 +525,7 @@ fn main() -> Result<(), Box<dyn StdError>> {
         }
     }?;
 
-    Ok(ret)
+    Ok(())
 }
 
 #[test]

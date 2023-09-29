@@ -67,11 +67,13 @@ pub(super) fn take_ed25519_pub(
 
     // This conversion cannot fail, by definition.
     let public_key_arr: [u8; ed25519_dalek::PUBLIC_KEY_LENGTH] =
-        public_key.try_into().expect(&format!(
-            "slice of length {} should convert to array of length {}",
-            public_key.len(),
-            ed25519_dalek::PUBLIC_KEY_LENGTH
-        ));
+        public_key.try_into().unwrap_or_else(|_| {
+            panic!(
+                "slice of length {} should convert to array of length {}",
+                public_key.len(),
+                ed25519_dalek::PUBLIC_KEY_LENGTH
+            )
+        });
 
     Ok((input, VerifyingKey::from_bytes(&public_key_arr)))
 }
@@ -80,7 +82,7 @@ pub(super) fn take_ed25519_sig(input: &[u8]) -> IResult<&[u8], Result<Signature,
     let (input, _) = verify(varuint_nom::u32, |x| *x == PREFIX_ED25519_SIG)(input)?;
     let (input, sig) = take(ed25519_dalek::SIGNATURE_LENGTH)(input)?;
 
-    Ok((input, Signature::from_slice(&sig)))
+    Ok((input, Signature::from_slice(sig)))
 }
 
 pub(super) fn take_ed25519_sec(input: &[u8]) -> IResult<&[u8], Option<SecretKey>> {
@@ -110,11 +112,13 @@ pub(super) fn take_ed25519_sec(input: &[u8]) -> IResult<&[u8], Option<SecretKey>
         input,
         private_key.map(|key| {
             // This conversion cannot fail, by definition.
-            key.try_into().expect(&format!(
-                "slice of length {} should convert to array of length {}",
-                key.len(),
-                SecretKey::LENGTH
-            ))
+            key.try_into().unwrap_or_else(|_| {
+                panic!(
+                    "slice of length {} should convert to array of length {}",
+                    key.len(),
+                    SecretKey::LENGTH
+                )
+            })
         }),
     ))
 }
