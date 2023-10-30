@@ -29,9 +29,10 @@ categories = ["cryptography"]
 edition = "2021"
 
 [dependencies]
-aead = "^0.4"
+aead = { version = "^0.5", features = ["std"] }
 anyhow = "^1"
-chacha20poly1305 = "^0.9"
+chacha20poly1305 = "^0.10"
+crypto-common = "^0.1"
 digest = "^0.10"
 ed25519-dalek = { version = "^2.0.0", features = ["rand_core"] }
 itertools = "^0.11"

@@ -21,12 +21,12 @@ use crate::{
     v0::wire::prefixes::*,
 };
 
-use aead::{generic_array::GenericArray, Aead, AeadCore, NewAead};
+use aead::{generic_array::GenericArray, Aead, AeadCore};
 use bip39::{Language, Mnemonic};
 use chacha20poly1305::ChaCha20Poly1305;
+use crypto_common::{KeyInit, KeySizeUser};
 use ed25519_dalek::{Signature, Signer, SigningKey, VerifyingKey};
 use multihash_codetable::MultihashDigest;
-use rand::RngCore;
 use unsigned_varint::encode as varuint_encode;
 
 // Use a 64-byte buffer by default.
@@ -37,7 +37,7 @@ pub type DocumentId = String;
 
 const PAPERBACK_VERSION: u32 = 0;
 
-type ChaChaPolyKey = GenericArray<u8, <ChaCha20Poly1305 as NewAead>::KeySize>;
+type ChaChaPolyKey = GenericArray<u8, <ChaCha20Poly1305 as KeySizeUser>::KeySize>;
 const CHACHAPOLY_KEY_LENGTH: usize = 32;
 
 type ChaChaPolyNonce = GenericArray<u8, <ChaCha20Poly1305 as AeadCore>::NonceSize>;
@@ -219,10 +219,8 @@ impl KeyShard {
         let wire_shard = self.to_wire();
 
         // Generate key and nonce.
-        let mut shard_key = ChaChaPolyKey::default();
-        rand::thread_rng().fill_bytes(&mut shard_key);
-        let mut shard_nonce = ChaChaPolyNonce::default();
-        rand::thread_rng().fill_bytes(&mut shard_nonce);
+        let shard_key = ChaCha20Poly1305::generate_key(&mut rand::thread_rng());
+        let shard_nonce = ChaCha20Poly1305::generate_nonce(&mut rand::thread_rng());
 
         // Encrypt the contents.
         let aead = ChaCha20Poly1305::new(&shard_key);
@@ -434,6 +432,7 @@ mod test {
 
     use multibase::Base;
     use quickcheck::TestResult;
+    use rand::RngCore;
 
     // NOTE: We use u16s and u8s here (and limit the range) because generating
     //       ridiculously large dealers takes too long because of the amount of

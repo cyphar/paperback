@@ -24,8 +24,9 @@ use crate::{
     },
 };
 
-use aead::{Aead, NewAead, Payload};
+use aead::{Aead, Payload};
 use chacha20poly1305::ChaCha20Poly1305;
+use crypto_common::KeyInit;
 use ed25519_dalek::SigningKey;
 use rand::{rngs::OsRng, RngCore};
 
