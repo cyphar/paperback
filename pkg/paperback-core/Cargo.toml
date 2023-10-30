@@ -44,7 +44,7 @@ rayon = "^1.8"
 printpdf = { version = "^0.6", features = ["svg"] }
 qrcode = "^0.12"
 serde = { version = "^1", features = ["derive"] }
-signature = "^1"
+signature = "^2"
 thiserror = "^1"
 tiny-bip39 = "^0.8"
 typenum = "^1"
