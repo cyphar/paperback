@@ -29,7 +29,7 @@ categories = ["cryptography"]
 edition = "2021"
 
 [dependencies]
-aead = "^0.4"
+aead = "^0.5"
 anyhow = "^1"
 chacha20poly1305 = "^0.9"
 digest = "^0.10"
