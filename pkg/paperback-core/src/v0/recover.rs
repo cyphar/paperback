@@ -18,7 +18,9 @@
 
 use crate::{
     shamir::{shard, Dealer},
-    v0::{Error, FromWire, KeyShard, KeyShardBuilder, MainDocument, ShardId, ShardSecret},
+    v0::{
+        Error, FromWire, KeyShard, KeyShardBuilder, MainDocument, Multihash, ShardId, ShardSecret,
+    },
 };
 
 use std::{
@@ -29,7 +31,6 @@ use std::{
 use aead::{Aead, NewAead, Payload};
 use chacha20poly1305::ChaCha20Poly1305;
 use ed25519_dalek::VerifyingKey;
-use multihash::Multihash;
 use once_cell::unsync::OnceCell;
 
 #[derive(Debug, Clone)]

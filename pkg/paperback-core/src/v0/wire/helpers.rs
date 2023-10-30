@@ -17,12 +17,11 @@
  */
 
 use crate::v0::{
-    wire::prefixes::*, ChaChaPolyKey, ChaChaPolyNonce, CHACHAPOLY_KEY_LENGTH,
+    wire::prefixes::*, ChaChaPolyKey, ChaChaPolyNonce, Multihash, CHACHAPOLY_KEY_LENGTH,
     CHACHAPOLY_NONCE_LENGTH,
 };
 
 use ed25519_dalek::{SecretKey, Signature, SignatureError, VerifyingKey};
-use multihash::Multihash;
 use nom::{
     branch::alt,
     bytes::streaming::{tag, take},

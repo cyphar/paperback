@@ -20,12 +20,11 @@ use crate::{
     shamir::Shard,
     v0::{
         wire::{prefixes::*, FromWire, ToWire},
-        ChaChaPolyNonce, EncryptedKeyShard, Identity, KeyShard, KeyShardBuilder,
+        ChaChaPolyNonce, EncryptedKeyShard, Identity, KeyShard, KeyShardBuilder, Multihash,
         CHACHAPOLY_NONCE_LENGTH, CHECKSUM_ALGORITHM,
     },
 };
 
-use multihash::Multihash;
 use unsigned_varint::{encode as varuint_encode, nom as varuint_nom};
 
 // Internal only -- users can't see KeyShardBuilder.

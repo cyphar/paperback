@@ -25,9 +25,12 @@ use aead::{generic_array::GenericArray, Aead, AeadCore, NewAead};
 use bip39::{Language, Mnemonic};
 use chacha20poly1305::ChaCha20Poly1305;
 use ed25519_dalek::{Signature, Signer, SigningKey, VerifyingKey};
-use multihash::{Multihash, MultihashDigest};
+use multihash_codetable::MultihashDigest;
 use rand::RngCore;
 use unsigned_varint::encode as varuint_encode;
+
+// Use a 64-byte buffer by default.
+type Multihash = multihash::Multihash<64>;
 
 pub type ShardId = String;
 pub type DocumentId = String;
@@ -49,7 +52,7 @@ fn check_length_consts() {
     assert_eq!(CHACHAPOLY_NONCE_LENGTH, ChaChaPolyNonce::default().len());
 }
 
-const CHECKSUM_ALGORITHM: multihash::Code = multihash::Code::Blake2b256;
+const CHECKSUM_ALGORITHM: multihash_codetable::Code = multihash_codetable::Code::Blake2b256;
 const CHECKSUM_MULTIBASE: multibase::Base = multibase::Base::Base32Z;
 
 #[derive(Debug, thiserror::Error)]
