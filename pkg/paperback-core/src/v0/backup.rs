@@ -19,16 +19,16 @@
 use crate::{
     shamir::Dealer,
     v0::{
-        ChaChaPolyKey, ChaChaPolyNonce, Error, KeyShard, KeyShardBuilder, MainDocument,
-        MainDocumentBuilder, MainDocumentMeta, ShardSecret, ToWire, PAPERBACK_VERSION,
+        Error, KeyShard, KeyShardBuilder, MainDocument, MainDocumentBuilder, MainDocumentMeta,
+        ShardSecret, ToWire, PAPERBACK_VERSION,
     },
 };
 
-use aead::{Aead, Payload};
+use aead::{Aead, AeadCore, Payload};
 use chacha20poly1305::ChaCha20Poly1305;
 use crypto_common::KeyInit;
 use ed25519_dalek::SigningKey;
-use rand::{rngs::OsRng, RngCore};
+use rand::rngs::OsRng;
 
 pub struct Backup {
     main_document: MainDocument,
@@ -43,10 +43,8 @@ impl Backup {
         let id_keypair = SigningKey::generate(&mut OsRng);
 
         // Generate key and nonce.
-        let mut doc_key = ChaChaPolyKey::default();
-        OsRng.fill_bytes(&mut doc_key);
-        let mut doc_nonce = ChaChaPolyNonce::default();
-        OsRng.fill_bytes(&mut doc_nonce);
+        let doc_key = ChaCha20Poly1305::generate_key(&mut OsRng);
+        let doc_nonce = ChaCha20Poly1305::generate_nonce(&mut OsRng);
 
         // Construct shard secret and serialise it.
         let shard_secret = {

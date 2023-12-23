@@ -21,10 +21,10 @@ use crate::{
     v0::wire::prefixes::*,
 };
 
-use aead::{generic_array::GenericArray, Aead, AeadCore};
+use aead::{Aead, AeadCore};
 use bip39::{Language, Mnemonic};
 use chacha20poly1305::ChaCha20Poly1305;
-use crypto_common::{KeyInit, KeySizeUser};
+use crypto_common::KeyInit;
 use ed25519_dalek::{Signature, Signer, SigningKey, VerifyingKey};
 use multihash_codetable::MultihashDigest;
 use unsigned_varint::encode as varuint_encode;
@@ -37,10 +37,10 @@ pub type DocumentId = String;
 
 const PAPERBACK_VERSION: u32 = 0;
 
-type ChaChaPolyKey = GenericArray<u8, <ChaCha20Poly1305 as KeySizeUser>::KeySize>;
+type ChaChaPolyKey = chacha20poly1305::Key;
 const CHACHAPOLY_KEY_LENGTH: usize = 32;
 
-type ChaChaPolyNonce = GenericArray<u8, <ChaCha20Poly1305 as AeadCore>::NonceSize>;
+type ChaChaPolyNonce = chacha20poly1305::Nonce;
 const CHACHAPOLY_NONCE_LENGTH: usize = 12;
 
 #[cfg(test)]

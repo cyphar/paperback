@@ -149,8 +149,10 @@ impl FromWire for ShardSecret {
 mod test {
     use super::*;
 
+    use chacha20poly1305::ChaCha20Poly1305;
+    use crypto_common::KeyInit;
     use ed25519_dalek::{Signer, SigningKey};
-    use rand::{rngs::OsRng, RngCore};
+    use rand::rngs::OsRng;
 
     // TODO: Get rid of this ugliness.
     impl PartialEq for ShardSecret {
@@ -182,9 +184,7 @@ mod test {
 
     #[quickcheck]
     fn shard_secret_roundtrip(_: u32, sealed: bool) -> bool {
-        let mut doc_key = ChaChaPolyKey::default();
-        OsRng.fill_bytes(&mut doc_key);
-
+        let doc_key = ChaCha20Poly1305::generate_key(&mut OsRng);
         let secret = ShardSecret {
             doc_key,
             id_keypair: match sealed {
