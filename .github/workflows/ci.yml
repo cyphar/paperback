@@ -85,7 +85,7 @@ jobs:
         save-if: ${{ github.ref == 'refs/heads/main' }}
     - run: cargo bench --workspace
     - name: upload benchmark results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: report
         path: target/criterion/
