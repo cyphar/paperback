@@ -951,9 +951,9 @@ dependencies = [
 
 [[package]]
 name = "multihash-codetable"
-version = "0.1.1"
+version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f6d815ecb3c8238d00647f8630ede7060a642c9f704761cd6082cb4028af6935"
+checksum = "c11bbdf904c8be009e82ff968c4dab84388cbafc45dfaff61936eca4bf40f1b5"
 dependencies = [
  "blake2b_simd",
  "blake2s_simd",
