@@ -34,7 +34,7 @@ anyhow = "^1"
 chacha20poly1305 = "^0.10"
 crypto-common = "^0.1"
 digest = "^0.10"
-ed25519-dalek = { version = "^2.0.0", features = ["rand_core"] }
+ed25519-dalek = { version = "^2.1.1", features = ["rand_core"] }
 itertools = "^0.13"
 multibase = "^0.9"
 multihash = "^0.19"
