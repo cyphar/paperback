@@ -43,7 +43,7 @@ nom = "^7" # This must match the unsigned-varint version.
 once_cell = "^1.9"
 rand = "^0.8" # This must match the ed25519-dalek version.
 rayon = "^1.10"
-printpdf = { version = "^0.6", features = ["svg"] }
+printpdf = { version = "^0.7", features = ["svg"] }
 qrcode = "^0.14"
 serde = { version = "^1", features = ["derive"] }
 signature = "^2"
