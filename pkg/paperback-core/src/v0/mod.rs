@@ -88,15 +88,6 @@ pub enum Error {
     Other(String),
 }
 
-impl From<anyhow::Error> for Error {
-    fn from(inner: anyhow::Error) -> Self {
-        match inner.downcast::<bip39::ErrorKind>() {
-            Ok(err) => Self::Bip39(err),
-            Err(err) => Self::Other(err.to_string()),
-        }
-    }
-}
-
 #[derive(Clone, Debug, Eq, PartialEq)]
 struct Identity {
     id_public_key: VerifyingKey,
@@ -230,7 +221,7 @@ impl KeyShard {
 
         // Convert key to a BIP-39 mnemonic.
         let phrase = Mnemonic::from_entropy(&shard_key, CODEWORD_LANGUAGE)
-            .map_err(Error::from)? // XXX: Ugly, fix this.
+            .map_err(Error::Bip39)?
             .into_phrase();
         let codewords = phrase
             .split_whitespace()
