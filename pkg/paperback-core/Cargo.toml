@@ -46,7 +46,7 @@ printpdf = { version = "^0.6", features = ["svg"] }
 qrcode = "^0.14"
 serde = { version = "^1", features = ["derive"] }
 signature = "^2"
-thiserror = "^1"
+thiserror = "^2"
 tiny-bip39 = "^2"
 typenum = "^1"
 unsigned-varint = { version = "^0.7", features = ["nom"] }
