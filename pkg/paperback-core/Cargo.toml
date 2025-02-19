@@ -40,7 +40,7 @@ multihash = "^0.19"
 multihash-codetable = { version = "^0.1", features = ["blake2b"] }
 nom = "^7" # This must match the unsigned-varint version.
 once_cell = "^1.20"
-rand = "^0.8" # This must match the ed25519-dalek version.
+rand = "^0.9" # This must match the ed25519-dalek version.
 rayon = "^1.10"
 printpdf = { version = "^0.6", features = ["svg"] }
 qrcode = "^0.14"
