@@ -163,6 +163,32 @@ version of the documents.
 [rust]: https://www.rust-lang.org/
 [cargo]: https://doc.rust-lang.org/cargo/
 
+#### Run in a Docker container
+You can run `paperback` in a very lightweight Alpine based Docker container
+(less than 20 MB). This is useful if don't want or you can't install the rust
+build toolchain on your system. To run `paperback` in a Docker container, you
+must first clone this repo or download the ZIP file of the code, then run the
+following command:
+```bash
+docker build -t paperback .
+```
+Then you can `cd` the directory where the files you need to backup are located
+and run the following command:
+```bash
+docker run --rm -v ${PWD}:/data paperback backup -n THRESHOLD -k SHARDS INPUT_FILE
+```
+all the commands runs exactly how described in the section above. This solution
+will create a temporary docker container that will be deleted after the command
+is executed.
+
+If you need to run multiple commands and you prefer an interactive terminal, you
+can run the following command instead of the previous one:
+```bash
+docker run --rm -it -v ${PWD}:/data --entrypoint /bin/sh paperback
+```
+then you can run all the `paperback` commands you need. When you finish, type
+`exit` to close the terminal and destroy the container.
+
 ### Paper Choices and Storage ###
 
 One of the most important things when considering using `paperback` is to keep
