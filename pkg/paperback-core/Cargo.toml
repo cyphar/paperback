@@ -57,7 +57,7 @@ donotuse_expose_internal_modules = []
 [dev-dependencies]
 quickcheck = "^1"
 quickcheck_macros = "^1"
-criterion = { version = "^0.5", features = ["html_reports"] }
+criterion = { version = "^0.6", features = ["html_reports"] }
 # FIXME: This is a hack to allow us to bencmark internal modules with criterion.
 "paperback-core" = { path = ".", features = [ "donotuse_expose_internal_modules" ] }
 
