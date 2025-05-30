@@ -16,11 +16,11 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use std::time::Duration;
+use std::{hint::black_box, time::Duration};
 
 use paperback_core::shamir::Dealer;
 
-use criterion::{black_box, criterion_group, criterion_main, Criterion, Throughput};
+use criterion::{criterion_group, criterion_main, Criterion, Throughput};
 use rand::{distributions::Standard, Rng};
 
 fn benchmark_dealer_next_shard(c: &mut Criterion) {
