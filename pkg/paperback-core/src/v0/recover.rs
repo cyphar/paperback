@@ -218,7 +218,7 @@ impl UntrustedQuorum {
         for document in documents {
             groups
                 .entry(GroupId::from(&document))
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(document);
         }
         groups.values().cloned().collect::<Vec<_>>()
@@ -289,7 +289,7 @@ impl UntrustedQuorum {
                 main_document.identity.id_public_key,
                 main_document.checksum(),
             )
-        } else if let Some(shard) = shards.get(0) {
+        } else if let Some(shard) = shards.first() {
             (
                 shard.inner.version,
                 shard.identity.id_public_key,
@@ -324,7 +324,7 @@ impl UntrustedQuorum {
                 || main_document.inner.meta.version != version
                 || self
                     .quorum_size()
-                    .map_or(false, |s| s != main_document.quorum_size())
+                    .is_some_and(|s| s != main_document.quorum_size())
             {
                 return Err(InconsistentQuorumError {
                     message: "main document has inconsistent identity".to_string(),
@@ -336,9 +336,7 @@ impl UntrustedQuorum {
             if shard.document_checksum() != doc_chksum
                 || shard.identity.id_public_key != id_public_key
                 || shard.inner.version != version
-                || self
-                    .quorum_size()
-                    .map_or(false, |s| s != shard.quorum_size())
+                || self.quorum_size().is_some_and(|s| s != shard.quorum_size())
             {
                 return Err(InconsistentQuorumError {
                     message: "shard has inconsistent identity".to_string(),
