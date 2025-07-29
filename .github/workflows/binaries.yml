@@ -37,10 +37,10 @@ jobs:
           os: macos-latest
           target: x86_64-apple-darwin
         - build: win-msvc
-          os: windows-2019
+          os: windows-2025
           target: x86_64-pc-windows-msvc
         - build: win32-msvc
-          os: windows-2019
+          os: windows-2025
           target: i686-pc-windows-msvc
 
     steps:
