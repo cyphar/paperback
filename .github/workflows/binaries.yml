@@ -44,7 +44,7 @@ jobs:
           target: i686-pc-windows-msvc
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - run: rustup toolchain install stable
     - run: rustup target add ${{ matrix.target }}
     - uses: Swatinem/rust-cache@v2
