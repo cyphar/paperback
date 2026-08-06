@@ -1,5 +1,9 @@
 [tools]
 rust = "stable"
+python = "3.13"
+
+[env]
+_.python.venv = { path = ".venv", create = true }
 
 [tasks.build]
 description = "Build paperback"
@@ -12,3 +16,11 @@ run = "cargo build  --release"
 [tasks.test]
 description = "Run the test suite"
 run = "cargo test"
+
+[tasks."test:integration"]
+description = "Run integration tests against the release build"
+depends = ["build:release"]
+run = [
+	"pip install --quiet -r tests/requirements.txt",
+	"pytest tests",
+]
