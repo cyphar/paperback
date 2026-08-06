@@ -1,0 +1,14 @@
+[tools]
+rust = "stable"
+
+[tasks.build]
+description = "Build paperback"
+run = "cargo build"
+
+[tasks."build:release"]
+description = "Build paperback release binaries"
+run = "cargo build  --release"
+
+[tasks.test]
+description = "Run the test suite"
+run = "cargo test"
