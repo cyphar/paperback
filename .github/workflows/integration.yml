@@ -1,0 +1,41 @@
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+name: integration
+
+jobs:
+  build:
+    name: release build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: jdx/mise-action@v2
+      - uses: Swatinem/rust-cache@v2
+        with:
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      - run: mise run build:release
+      - name: upload release binary
+        uses: actions/upload-artifact@v5
+        with:
+          name: paperback-release
+          path: target/release/paperback
+          if-no-files-found: error
+
+  test:
+    name: integration tests
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v5
+      - uses: jdx/mise-action@v2
+      - name: download release binary
+        uses: actions/download-artifact@v6
+        with:
+          name: paperback-release
+          path: target/release
+      - run: chmod +x target/release/paperback
+      - run: sudo apt-get update && sudo apt-get install -y zbar-tools poppler-utils ghostscript
+      - run: mise test:integration

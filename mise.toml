@@ -19,7 +19,6 @@ run = "cargo test"
 
 [tasks."test:integration"]
 description = "Run integration tests against the release build"
-depends = ["build:release"]
 run = [
 	"pip install --quiet -r tests/requirements.txt",
 	"pytest tests",
